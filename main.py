@@ -110,3 +110,92 @@ class Net(nn.Module):
     #end of def forward(self,x)
     
 #end of class Net(nn.Module)
+
+#============================================================================================================
+#Define Forward Pass
+#============================================================================================================
+print("\n\n Define Forward Pass...")
+print("--------------------------------------------------------------\n")
+
+batch=32
+num_hidden=64
+
+
+# synaptic Neuron--------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+alpha=0.9
+beta=0.8
+num_steps=64 #(look back to see if this is a good value or not)
+
+#ininitialize LIF
+lif1=snn.Synaptic(alpha=alpha, beta=beta)
+
+#period spiking
+w=0.2 #0.2v
+
+spk_period=torch.cat((torch.ones(1)*w, torch.zeros(9)),0)
+spk_in=spk_period.repeat(20)
+
+#initalize 
+syn,mem=lif1.init_synaptic()
+spk_out= torch.zeros(1)
+
+syn_rec=[]
+mem_rec=[]
+spk_rec=[]
+
+#simpulate neurons 
+for steps in range(num_steps):
+    spk_out,syn, mem= lif1(spk_in[steps],syn,mem)
+    syn_rec.append(syn)
+    mem_rec.append(mem)
+    spk_rec.append(spk_out)
+#end for loop 
+
+#convert list to tensors 
+syn_rec=torch.stack(syn_rec) 
+mem_rec=torch.stack(mem_rec) 
+spk_rec=torch.stack(spk_rec) 
+
+#plot synaptic neurons 
+ps.plot_cur_mem_spk(syn_rec, mem_rec, spk_rec, title="Synaptic Neuron Model With Input Spikes")
+plt.savefig("plots/Synaptic Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
+print("Plot saved successfully as Synaptic Neuron Model With Input Spikes.png!")
+
+# Alpha Neuron-----------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+#initalize neuron 
+lif2= snn.Alpha(alpha=alpha, beta=beta)
+
+#input spike and period spiking 
+w=0.85
+spk_in = (torch.cat((torch.zeros(10), torch.ones(1), torch.zeros(89),
+                    (torch.cat((torch.ones(1), torch.zeros(9)),0).repeat(10))), 0) * w).unsqueeze(1)
+
+# initialize parameters
+syn_exc, syn_inh, mem = lif2.init_alpha()
+mem_rec = []
+spk_rec = []
+
+# run simulation
+for step in range(num_steps):
+  spk_out, syn_exc, syn_inh, mem = lif2(spk_in[step], syn_exc, syn_inh, mem)
+  mem_rec.append(mem.squeeze(0))
+  spk_rec.append(spk_out.squeeze(0))
+
+# convert lists to tensors
+mem_rec = torch.stack(mem_rec)
+spk_rec = torch.stack(spk_rec)
+
+ps.plot_cur_mem_spk(spk_in, mem_rec, spk_rec, "Alpha Neuron Model With Input Spikes")
+plt.savefig("plots/Alpha Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
+print("Plot saved successfully as Alpha Neuron Model With Input Spikes.png!")
+
+
+#============================================================================================================
+#Training Loop
+#============================================================================================================
+print("\n\n Training Loop...")
+print("--------------------------------------------------------------\n")
