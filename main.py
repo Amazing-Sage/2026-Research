@@ -5,6 +5,10 @@
 import snntorch as snn
 from snntorch import spikeplot as splt
 from snntorch import spikegen
+from snntorch import functional as SF
+from snntorch import utils
+from snntorch import spikeplot as splt
+from snntorch import surrogate
 
 import torch
 import torch.nn as nn
@@ -12,6 +16,11 @@ from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
 
 from datasets import load_dataset
+
+import optuna 
+from sklearn.datasets import load_iris
+from sklearn.svm import SVC
+from sklearn.model_selection import cross_val_score
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -49,7 +58,7 @@ transform = transforms.Compose([
             transforms.Normalize((0,), (1,))])
 
 CIFAR10_train= datasets.CIFAR10(data_path,train=True, download=True, transform=transform)
-CIFAR10_test= datasets.CIFAR10(data_path,train=False, download=True, transform=True)
+CIFAR10_test= datasets.CIFAR10(data_path,train=False, download=True, transform=transform)
 
 #Create DataLoaders 
 train_loader= DataLoader(CIFAR10_test, batch_size=batch_size, shuffle=False, drop_last=True)
@@ -120,7 +129,6 @@ print("--------------------------------------------------------------\n")
 batch=32
 num_hidden=64
 
-
 # synaptic Neuron--------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
@@ -133,30 +141,41 @@ lif1=snn.Synaptic(alpha=alpha, beta=beta)
 
 #period spiking
 w=0.2 #0.2v
-
 spk_period=torch.cat((torch.ones(1)*w, torch.zeros(9)),0)
 spk_in=spk_period.repeat(20)
+
+#define data and targets
+data,targets=next(iter(train_loader))
+data=data.to(device)
+targets=targets.to(device)
 
 #initalize 
 syn,mem=lif1.init_synaptic()
 spk_out= torch.zeros(1)
 
-syn_rec=[]
-mem_rec=[]
-spk_rec=[]
 
-#simpulate neurons 
-for steps in range(num_steps):
-    spk_out,syn, mem= lif1(spk_in[steps],syn,mem)
-    syn_rec.append(syn)
-    mem_rec.append(mem)
-    spk_rec.append(spk_out)
-#end for loop 
+def forward_pass(net,num_steps,data):
+    utils.reset(net)
+    
+    syn_rec=[]
+    mem_rec=[]
+    spk_rec=[]
 
-#convert list to tensors 
-syn_rec=torch.stack(syn_rec) 
-mem_rec=torch.stack(mem_rec) 
-spk_rec=torch.stack(spk_rec) 
+    syn, mem = net.init_synaptic()
+    
+    #simpulate neurons 
+    for steps in range(num_steps):
+        spk_out,syn, mem= lif1(spk_in[steps],syn,mem)
+        syn_rec.append(syn)
+        mem_rec.append(mem)
+        spk_rec.append(spk_out)
+    #end for loop 
+    
+    return torch.stack(spk_rec), torch.stack(mem_rec), torch.stack(spk_out)
+
+#run the forward pass 
+syn_rec, mem_rec, spk_rec=forward_pass(lif1,num_steps,spk_in)
+
 
 #plot synaptic neurons 
 ps.plot_cur_mem_spk(syn_rec, mem_rec, spk_rec, title="Synaptic Neuron Model With Input Spikes")
@@ -176,26 +195,80 @@ spk_in = (torch.cat((torch.zeros(10), torch.ones(1), torch.zeros(89),
 
 # initialize parameters
 syn_exc, syn_inh, mem = lif2.init_alpha()
-mem_rec = []
-spk_rec = []
+alpha_mem_rec = []
+alpha_spk_rec = []
+alpha_spk_in=[]
 
 # run simulation
 for step in range(num_steps):
   spk_out, syn_exc, syn_inh, mem = lif2(spk_in[step], syn_exc, syn_inh, mem)
-  mem_rec.append(mem.squeeze(0))
-  spk_rec.append(spk_out.squeeze(0))
+  alpha_mem_rec.append(mem.squeeze(0))
+  alpha_spk_rec.append(spk_out.squeeze(0))
+
+#run the forward pass 
+syn_rec, mem_rec, spk_rec=forward_pass(lif1,num_steps,spk_in)
 
 # convert lists to tensors
-mem_rec = torch.stack(mem_rec)
-spk_rec = torch.stack(spk_rec)
+mem_rec = torch.stack(alpha_mem_rec)
+spk_rec = torch.stack(alpha_spk_rec)
 
-ps.plot_cur_mem_spk(spk_in, mem_rec, spk_rec, "Alpha Neuron Model With Input Spikes")
+ps.plot_cur_mem_spk(alpha_spk_in[:num_steps], alpha_mem_rec, alpha_spk_rec,"Alpha Neuron Model With Input Spikes")
 plt.savefig("plots/Alpha Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
 print("Plot saved successfully as Alpha Neuron Model With Input Spikes.png!")
 
 
 #============================================================================================================
-#Training Loop
+#Training Network 
 #============================================================================================================
 print("\n\n Training Loop...")
 print("--------------------------------------------------------------\n")
+
+# Define Loss functions -------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+loss_fn= SF.ce_rate_loss()
+loss_val = loss_fn(spk_rec, targets)
+
+#got this from https://discuss.pytorch.org/t/custom-loss-functions/29387
+def my_loss(output, target):
+    loss=torch.mean((output-target)**2)
+    
+    return loss
+#end of def loss
+
+model=nn.Linear (4,4) 
+x=torch.randn(1,2)
+target=torch.randin(1,2)
+output= model(x)
+loss= my_loss(output,target) 
+loss.backward() 
+print(model.weight.grad)
+
+
+# Define Gradient Functions ---------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+#initialize surrogate gradients 
+spike_grad1=surrogate.fast_sigmoid() 
+spike_grad2=surrogate.FastSigmoid()
+spike_grad3=surrogate.fast_sigmoid(slope=50)
+
+#define custom surrogate gradient 
+
+def custom_fast_sigmoid(input,grad_input, spikes):
+    #hyperparameter slope 
+    slope=25
+    grad= grad_input/ (slope * torch.abs(input)+1.0)**2
+    
+    return grad 
+#end of def custom_fast_sigmoid(input,grad_input, spikes)
+
+spike_grad= surrogate.custom_surrogate(custom_fast_sigmoid)
+
+# Optimization ----------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+
+# Training Loop ---------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+
+
