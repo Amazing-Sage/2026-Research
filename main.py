@@ -106,10 +106,10 @@ class Net(nn.Module):
             
             #flatten and feed layers 
             cur1= self.fc1(x)
-            spk1 , mem1= self.lif(cur1,mem1)
+            spk1 , mem1= self.lif1(cur1,mem1)
             
             cur2= self.fc1(x)
-            spk2 , mem2= self.lif(cur1,mem2)
+            spk2 , mem2= self.lif2(cur1,mem2)
             
             #record final layer to be used for later 
             spk2_rec.append(spk2)
@@ -171,7 +171,7 @@ def forward_pass(net,num_steps,data):
         spk_rec.append(spk_out)
     #end for loop 
     
-    return torch.stack(spk_rec), torch.stack(mem_rec), torch.stack(spk_out)
+    return torch.stack(syn_rec), torch.stack(mem_rec), torch.stack(spk_rec)
 
 #run the forward pass 
 syn_rec, mem_rec, spk_rec=forward_pass(lif1,num_steps,spk_in)
@@ -212,7 +212,7 @@ syn_rec, mem_rec, spk_rec=forward_pass(lif1,num_steps,spk_in)
 mem_rec = torch.stack(alpha_mem_rec)
 spk_rec = torch.stack(alpha_spk_rec)
 
-ps.plot_cur_mem_spk(alpha_spk_in[:num_steps], alpha_mem_rec, alpha_spk_rec,"Alpha Neuron Model With Input Spikes")
+ps.plot_cur_mem_spk(spk_in[:num_steps], mem_rec, spk_rec, "Alpha Neuron Model With Input Spikes")
 plt.savefig("plots/Alpha Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
 print("Plot saved successfully as Alpha Neuron Model With Input Spikes.png!")
 
@@ -225,30 +225,22 @@ print("--------------------------------------------------------------\n")
 
 # Define Loss functions -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+net_model= Net().to(device)
+model_spk_rec,_=net_model(data.view(batch_size,-1))
+
 loss_fn= SF.ce_rate_loss()
-loss_val = loss_fn(spk_rec, targets)
+loss_val = loss_fn(model_spk_rec, targets)
 
-#got this from https://discuss.pytorch.org/t/custom-loss-functions/29387
-def my_loss(output, target):
-    loss=torch.mean((output-target)**2)
-    
-    return loss
-#end of def loss
-
-model=nn.Linear (4,4) 
-x=torch.randn(1,2)
-target=torch.randin(1,2)
-output= model(x)
-loss= my_loss(output,target) 
-loss.backward() 
-print(model.weight.grad)
+#first run was 4.23 which is higher than Loss= 2.30
+#(using cross entropy. 0.1 due to 10% chance prob. per class)
+print(f"Loss Value: {loss_val.item()}")
 
 
 # Define Gradient Functions ---------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 #initialize surrogate gradients 
 spike_grad1=surrogate.fast_sigmoid() 
-spike_grad2=surrogate.FastSigmoid()
+spike_grad2=surrogate.fast_sigmoid()
 spike_grad3=surrogate.fast_sigmoid(slope=50)
 
 #define custom surrogate gradient 
