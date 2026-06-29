@@ -50,10 +50,13 @@ dtype = torch.float
 # Force the network to use the CPU due to hardware mismatch
 device = torch.device("cpu")
 
-# Define a transform
+# Define a transform, using data augmentation to help with overfitting
+
+from torchvision import transforms
+
 transform = transforms.Compose([
-            transforms.Resize((28, 28)),
-            transforms.Grayscale(),
+            transforms.RandomCrop(28),#augmentation (28 x 28)
+            transforms.RandomHorizontalFlip(),#augmentation
             transforms.ToTensor(),
             transforms.Normalize((0,), (1,))])
 
@@ -108,8 +111,8 @@ class Net(nn.Module):
             cur1= self.fc1(x)
             spk1 , mem1= self.lif1(cur1,mem1)
             
-            cur2= self.fc1(x)
-            spk2 , mem2= self.lif2(cur1,mem2)
+            cur2= self.fc2(spk1)
+            spk2 , mem2= self.lif2(cur2,mem2)
             
             #record final layer to be used for later 
             spk2_rec.append(spk2)
@@ -257,7 +260,32 @@ spike_grad= surrogate.custom_surrogate(custom_fast_sigmoid)
 
 # Optimization ----------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+#use L1 and L2  along with data augmentation to help help overfitting,
+#use l1/l2 because it takes a lot less space and energy 
+#data augmentation was defined in "Loading CIFAR-10"
 
+#adding L1 hyperparameters
+l1_alpha=1e-5
+l1_loss=0
+beta=0.95
+
+num_epoch=1
+loss_hist=[]
+test_acc_hist=[]
+counter=0
+
+#this adds l1 and l2 parameter to every layer to the final loss
+def regularization(model:nn.Module, reg_type:str, coef:float):
+    int_type=int(reg_type[1])
+    reg_loss=0
+    
+    
+    for param in model.parameters():
+        reg_loss+= torch.norm(param, int_type)
+    #end for param in module.parameters()
+    return reg_loss*coef
+
+#end of def regularization(model:nn.Module, reg_type:str, coef:float)
 
 # Training Loop ---------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
