@@ -229,10 +229,13 @@ print("--------------------------------------------------------------\n")
 # Define Loss functions -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 net_model= Net().to(device)
-model_spk_rec,_=net_model(data.view(batch_size,-1))
+
+#covert RBG to grayscale so it fits
+grayscale_data=data.mean(dim=1)
+spk_rec,_=net_model(grayscale_data.view(batch_size,-1))
 
 loss_fn= SF.ce_rate_loss()
-loss_val = loss_fn(model_spk_rec, targets)
+loss_val = loss_fn(spk_rec, targets)
 
 #first run was 4.23 which is higher than Loss= 2.30
 #(using cross entropy. 0.1 due to 10% chance prob. per class)
@@ -274,6 +277,8 @@ loss_hist=[]
 test_acc_hist=[]
 counter=0
 
+optimizer = torch.optim.Adam(net_model.parameters(), lr=1e-2, betas=(0.9, 0.999), weight_decay=1e-4)
+
 #this adds l1 and l2 parameter to every layer to the final loss
 def regularization(model:nn.Module, reg_type:str, coef:float):
     int_type=int(reg_type[1])
@@ -290,5 +295,32 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
 # Training Loop ---------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
+for epoch in range (num_epoch):
+    for data, targets in iter(train_loader):
+        
+        #Zero the gradients 
+        optimizer.zero_grad()
+        
+        #forward pass 
+        net_model.train()
+        
+        grayscale_data= data.mean(dim=1)
+        spk_rec,_=net_model(grayscale_data.view(data.size(0),-1))
+        
+        #bass loss calculation 
+        loss_val=loss_fn(spk_rec, targets)
 
-
+        #L1 penalty 
+        regularization(net_model,'l1',l1_alpha)
+        
+        total_loss= loss_val+regularization(net_model,'l1',l1_alpha)
+        
+        #backward pass 
+        total_loss.backward()
+        
+        #optimizer step 
+        optimizer.step()
+        
+    #end of for data, targets in iter(train_loader)
+    
+#end of for epoch in range (num_epoch)
