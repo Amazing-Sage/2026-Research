@@ -36,7 +36,8 @@ import plot_settings as ps
 #Loading CIFAR-10 datasets 
 #============================================================================================================
 print("\n\n Loading CIFAR-10...")
-print("--------------------------------------------------------------\n")
+print("==============================================================\n")
+
 
 #dataset= load_dataset("CIFAR10")
 #print(dataset)
@@ -50,28 +51,37 @@ dtype = torch.float
 # Force the network to use the CPU due to hardware mismatch
 device = torch.device("cpu")
 
-# Define a transform, using data augmentation to help with overfitting
+#use 4 seprate cpu cores to process images in parralel 
+num_workers=4
 
+# Define a transform, using data augmentation to help with overfitting
 from torchvision import transforms
 
 transform = transforms.Compose([
             transforms.RandomCrop(28),#augmentation (28 x 28)
+            transforms.Resize(32), #resize back to 32
             transforms.RandomHorizontalFlip(),#augmentation
             transforms.ToTensor(),
-            transforms.Normalize((0,), (1,))])
+            transforms.Normalize((0,0,0),(1,1,1))])
+
+test_transform= transforms.Compose([
+    transforms.ToTensor(), 
+    transforms.Normalize((0,0,0),(1,1,1))])
+
 
 CIFAR10_train= datasets.CIFAR10(data_path,train=True, download=True, transform=transform)
-CIFAR10_test= datasets.CIFAR10(data_path,train=False, download=True, transform=transform)
+CIFAR10_test= datasets.CIFAR10(data_path,train=False, download=True, transform=test_transform)
 
 #Create DataLoaders 
-train_loader= DataLoader(CIFAR10_test, batch_size=batch_size, shuffle=False, drop_last=True)
-test_loader= DataLoader(CIFAR10_train, batch_size=batch_size, shuffle=True, drop_last=True)
+train_loader= DataLoader(CIFAR10_train, batch_size=batch_size, shuffle=True, drop_last=True, num_workers=num_workers )
+test_loader= DataLoader(CIFAR10_test, batch_size=batch_size, shuffle=False, drop_last=False,num_workers=num_workers)
 
 #============================================================================================================
 #Define Layers and LIF
 #============================================================================================================
 print("\n\n Define Layers and LIF...")
-print("--------------------------------------------------------------\n")
+print("==============================================================\n")
+
 
 # Set up ----------------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -127,7 +137,8 @@ class Net(nn.Module):
 #Define Forward Pass
 #============================================================================================================
 print("\n\n Define Forward Pass...")
-print("--------------------------------------------------------------\n")
+print("==============================================================\n")
+
 
 batch=32
 num_hidden=64
@@ -223,8 +234,8 @@ print("Plot saved successfully as Alpha Neuron Model With Input Spikes.png!")
 #============================================================================================================
 #Training Network 
 #============================================================================================================
-print("\n\n Training Loop...")
-print("--------------------------------------------------------------\n")
+print("\n\n Training Network...")
+print("==============================================================\n")
 
 # Define Loss functions -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -238,8 +249,25 @@ loss_fn= SF.ce_rate_loss()
 loss_val = loss_fn(spk_rec, targets)
 
 #first run was 4.23 which is higher than Loss= 2.30
-#(using cross entropy. 0.1 due to 10% chance prob. per class)
+#(using cross entropy. 0.1 due to 10% chance prob. per class which is 2.30, should be this or less)
 print(f"Loss Value: {loss_val.item()}")
+
+#define hardware report -------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+#put here because we defined net_model earler and finished that section before defining 
+def generate_hardware_report(net_model):
+    print("\n Hardware Report ...")
+    print("_______________________________________________\n")
+    #download torchinfo fo this to work...
+    # print layers memory and parameters
+    torchinfo.summary(net_model, input_size=(1,3,32,32))
+
+    #use thop to calculate MAC Operations
+    dummy_input= torch.rand(1,3,32,32)
+    macs, params= profile(net_model, inputs=(dummy_input,))
+    print(f"MACS: {macs},  Params:{params}")
+
+#end of def generate_hardware_report(net_model)
 
 
 # Define Gradient Functions ---------------------------------------------------------------------------------
@@ -292,6 +320,10 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
 
 #end of def regularization(model:nn.Module, reg_type:str, coef:float)
 
+# Hardware Report ---------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+generate_hardware_report(net_model)
+
 # Training Loop ---------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
@@ -324,3 +356,59 @@ for epoch in range (num_epoch):
     #end of for data, targets in iter(train_loader)
     
 #end of for epoch in range (num_epoch)
+
+# Hardware Report ---------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+generate_hardware_report(net_model)
+
+#============================================================================================================
+#Quantisizing
+#============================================================================================================
+print("\n\n Quantisizing ...")
+print("==============================================================\n")
+
+# Inspection ------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+#Find the min and max of the whole network by comparing all of the layers min and max weights 
+
+#weighted_ is refering to every weight in every layer 
+weighted_min=float("inf")
+weighted_max=float('-inf')
+
+# 
+for parameter in net_model.parameters():
+    weighted_min= min(weighted_min,parameter.min().item())
+    weighted_max= max(weighted_max,parameter.max().item())
+        
+    #calculate scaling factor, use 15 because there's 15 num_steps in 4 bit integer range 
+    #represents 2^4 which is 16 , use 7 because pos nums is (0001-0111) and -8 bc neg nums (1000-1111)
+    #-8+7=15 giving us our range 
+    S= (weighted_max - weighted_min)/15
+#end of for parameter in net_model.parameters()
+
+# Quantisize into 4 bit integers  ---------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+with torch.no_grad():
+    for parameter in net_model.parameters():
+        #scale weights 
+        scaled=parameter/S
+        
+        #round to nearest integer (whole number)
+        rounded=torch.round(scaled)
+        
+        # clamp values between -8 and 7 to fit 4 bits
+        clamped= torch.clamp(rounded, min=-8, max=7)
+        
+        #overwrite tensors data to fit the 4 bit criteria 
+        parameter.copy_(clamped)
+        
+    # end for parameter in net_model.parameters()
+# with torch.no_grad()
+
+# Hardware Report -------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+generate_hardware_report(net_model)
+
+
+
