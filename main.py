@@ -11,6 +11,8 @@ from snntorch import spikeplot as splt
 from snntorch import surrogate
 
 import torch
+import torchinfo
+import thop
 import torch.nn as nn
 from torch.utils.data import DataLoader
 from torchvision import datasets, transforms
@@ -45,6 +47,7 @@ print("==============================================================\n")
 # dataloader arguments
 batch_size = 128
 data_path='/tmp/data/CIFAR10'
+beta=0.95
 
 dtype = torch.float
 
@@ -58,15 +61,16 @@ num_workers=4
 from torchvision import transforms
 
 transform = transforms.Compose([
+            transforms.Grayscale(1),
             transforms.RandomCrop(28),#augmentation (28 x 28)
             transforms.Resize(32), #resize back to 32
             transforms.RandomHorizontalFlip(),#augmentation
             transforms.ToTensor(),
-            transforms.Normalize((0,0,0),(1,1,1))])
+            transforms.Normalize((0,),(1,))])
 
 test_transform= transforms.Compose([
     transforms.ToTensor(), 
-    transforms.Normalize((0,0,0),(1,1,1))])
+    transforms.Normalize((0,),(1,))])
 
 
 CIFAR10_train= datasets.CIFAR10(data_path,train=True, download=True, transform=transform)
@@ -92,21 +96,23 @@ num_hidden = 1000 # middle layer of 1k neurons to find patterns in images
 num_outputs = 10 #output layer neurons
 
 # Temporal Dynamics
-num_steps = 25 #number of steps to un
-beta = 0.95 #leak 5% with 95%retained of E charge from one time step 
+num_steps = 25 #number of steps to 
 
 class Net(nn.Module):
     def __init__(self):
         super().__init__()
         
-        self.fc1=nn.Linear(num_inputs,num_hidden)
+        self.fc1=nn.Linear(1024,64) #takes input, output to fc2
         self.lif1=snn.Leaky(beta=beta)
         
-        self.fc2=nn.Linear(num_hidden,num_outputs)
+        self.fc2=nn.Linear(num_hidden,num_outputs) #creates final classes with fc1
         self.lif2=snn.Leaky(beta=beta)
     #end of def __init__(self)
         
     def forward(self,x):
+        #flatten input from (1,1,32,32) to (1,1024)
+        x=torch.flatten(x,start_dim=1)
+        
         #initialize layers 
         mem1=self.lif1.init_leaky()
         mem2=self.lif2.init_leaky()
@@ -130,8 +136,9 @@ class Net(nn.Module):
         return torch.stack(spk2_rec,dim=0), torch.stack(mem2_rec,dim=0)
     
     #end of def forward(self,x)
-    
 #end of class Net(nn.Module)
+
+
 
 #============================================================================================================
 #Define Forward Pass
@@ -254,17 +261,22 @@ print(f"Loss Value: {loss_val.item()}")
 
 #define hardware report -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+
+#print("Model device:", next(net_model.parameters()).device)
 #put here because we defined net_model earler and finished that section before defining 
 def generate_hardware_report(net_model):
     print("\n Hardware Report ...")
     print("_______________________________________________\n")
-    #download torchinfo fo this to work...
+    
     # print layers memory and parameters
-    torchinfo.summary(net_model, input_size=(1,3,32,32))
+    torchinfo.summary(net_model, input_size=(1,1,32,32),device=('cpu'))
 
+    #move to cpu for report 
+    #net_model.to("cpu")
+    
     #use thop to calculate MAC Operations
-    dummy_input= torch.rand(1,3,32,32)
-    macs, params= profile(net_model, inputs=(dummy_input,))
+    dummy_input= torch.rand(1,1,32,32)
+    macs, params= thop.profile(net_model, inputs=(dummy_input,))
     print(f"MACS: {macs},  Params:{params}")
 
 #end of def generate_hardware_report(net_model)
@@ -312,7 +324,6 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
     int_type=int(reg_type[1])
     reg_loss=0
     
-    
     for param in model.parameters():
         reg_loss+= torch.norm(param, int_type)
     #end for param in module.parameters()
@@ -320,44 +331,82 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
 
 #end of def regularization(model:nn.Module, reg_type:str, coef:float)
 
-# Hardware Report ---------------------------------------------------------------------------
+# Hardware Report -------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 generate_hardware_report(net_model)
 
-# Training Loop ---------------------------------------------------------------------------------------------
+# Training Loop (in a definition so it can run in optuna) ---------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+def training_loop(net_model,optimizer):
+    for epoch in range (num_epoch):
+        for data, targets in iter(train_loader):
+            #Zero the gradients 
+            optimizer.zero_grad()
+            
+            #forward pass 
+            net_model.train()
+            
+            grayscale_data= data.mean(dim=1)
+            spk_rec,_=net_model(grayscale_data.view(data.size(0),-1))
+            
+            #bass loss calculation 
+            loss_val=loss_fn(spk_rec, targets)
 
-for epoch in range (num_epoch):
-    for data, targets in iter(train_loader):
-        
-        #Zero the gradients 
-        optimizer.zero_grad()
-        
-        #forward pass 
-        net_model.train()
-        
-        grayscale_data= data.mean(dim=1)
-        spk_rec,_=net_model(grayscale_data.view(data.size(0),-1))
-        
-        #bass loss calculation 
-        loss_val=loss_fn(spk_rec, targets)
+            #L1 penalty 
+            regularization(net_model,'l1',l1_alpha)
+            
+            total_loss= loss_val+regularization(net_model,'l1',l1_alpha)
+            
+            #backward pass 
+            total_loss.backward()
+            
+            #optimizer step 
+            optimizer.step()
+        #end of for data, targets in iter(train_loader) 
+    #end of for epoch in range (num_epoch)
+    return net_model
+#end of def training_loop(net_model, optimizer)
 
-        #L1 penalty 
-        regularization(net_model,'l1',l1_alpha)
-        
-        total_loss= loss_val+regularization(net_model,'l1',l1_alpha)
-        
-        #backward pass 
-        total_loss.backward()
-        
-        #optimizer step 
-        optimizer.step()
-        
-    #end of for data, targets in iter(train_loader)
+#define objective for optuna as beta and lr and run training loop
+def objective(trial):
+    beta=trial.suggest_float('beta',0.5,0.99)
+    lr = trial.suggest_float('lr',1e-4,1e-2,log=True)
     
-#end of for epoch in range (num_epoch)
+    #initialize net and optimizer 
+    net=Net()
+    optimizer=torch.optim.Adam(net.parameters(), lr=lr)
+    
+    #train model 
+    training_net =training_loop(net, optimizer)
+    training_net.eval()
+    
+    correct=0 
+    total=0 
+    
+    with torch.no_grad():
+        for data, targets in test_loader: #val_loader= validation loader 
+            grayscale_data=data.mean(dim=1)
+            outputs,_=training_net(grayscale_data.view(data.size(0),-1))
+            
+            #compress the 64 time step 
+            outputs_sum= outputs.sum(dim=0)
+            
+            #predict class index 
+            _,predicted= torch.max(outputs_sum.data,1) 
+            
+            #count total items and correct predictions 
+            total += targets.size(0)
+            correct +=(predicted==targets).sum().item()
+        #end of for for data, targets in val_loader:
+    
+    #run training loop function and get a score 
+    accuracy=100 *correct/total
+    
+    return accuracy
+#end of def objective(trial)
 
-# Hardware Report ---------------------------------------------------------------------------
+
+# Hardware Report -------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 generate_hardware_report(net_model)
 
@@ -411,4 +460,29 @@ with torch.no_grad():
 generate_hardware_report(net_model)
 
 
+#============================================================================================================
+#Optuna Results 
+#============================================================================================================
 
+print("\n\n Optuna Results ")
+print("==============================================================\n")
+
+#create study object to look for max accuracy 
+study = optuna.create_study(direction='maximize') 
+#direction='maximize' means higher accuracy means better model
+
+#run optimimization process 
+study.optimize(objective, n_trials=20)
+#n_trials=20 is repeated times of guessing beta and lr
+
+#print best hyper parameters found
+print("Best Trial:")
+print("_______________________________________________\n")
+trial=study.best_trial
+print(f"Accuracy: {trial.value}%")
+
+print("\nparameters:")
+print("_______________________________________________\n")
+
+for key, value in trial.params.items():
+    print(f"    {key}: {value}")
