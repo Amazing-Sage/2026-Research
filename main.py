@@ -138,6 +138,45 @@ class Net(nn.Module):
     #end of def forward(self,x)
 #end of class Net(nn.Module)
 
+# LIF Graph using Lapicqe neuron model ----------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+num_steps=200
+
+#LIF with reset 
+def leaky_integrate_and_fire(mem, cur=0,threashold=0.4,time_step=1e-3,R=10, C=5e-3):
+    tau_mem=R*C 
+    spk=(mem>threashold)
+    mem= mem+(time_step/tau_mem)*(-mem + cur*R) - spk*threashold #sub threashold everytime spk=1
+    return mem,spk
+
+
+#create same neuron 
+lif2=snn.Lapicque(R=5.1,C=5e-3, time_step=1e-3)
+
+#initialize inputs and outputs 
+cur_in=torch.cat((torch.zeros(10,1), torch.ones(190,1)*0.2),0) #change 0.4 to change current
+mem=torch.zeros(1)
+spk_out=torch.zeros(1)
+
+mem_rec=[mem]
+spk_rec=[spk_out]
+
+#run across 100 time steps 
+for step in range(num_steps):
+    spk_out,mem=lif2(cur_in[step],mem)
+    mem_rec.append(mem) 
+    spk_rec.append(spk_out)
+# end of run across 100 time steps 
+
+#convert list to tensors 
+mem_rec=torch.stack(mem_rec) 
+spk_rec=torch.stack(spk_rec)
+
+
+ps.plot_cur_mem_spk(cur_in, mem_rec, spk_rec, thr_line=1, ylim_max2=1.3,
+                 title="Lapicque Neuron Model With Periodic Firing")
+plt.savefig("plots/Lapicque Neuron Model With Periodic Firing.png", dpi=300, bbox_inches="tight")
+print("Plot saved successfully as Lapicque Neuron Model With Periodic Firing.png!")
 
 
 #============================================================================================================
@@ -177,11 +216,10 @@ spk_out= torch.zeros(1)
 
 def forward_pass(net,num_steps,data):
     utils.reset(net)
-    
     syn_rec=[]
     mem_rec=[]
     spk_rec=[]
-
+    
     syn, mem = net.init_synaptic()
     
     #simpulate neurons 
@@ -259,6 +297,11 @@ loss_val = loss_fn(spk_rec, targets)
 #(using cross entropy. 0.1 due to 10% chance prob. per class which is 2.30, should be this or less)
 print(f"Loss Value: {loss_val.item()}")
 
+# Loss Function Graph ---------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+
+
 #define hardware report -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
@@ -301,6 +344,11 @@ def custom_fast_sigmoid(input,grad_input, spikes):
 
 spike_grad= surrogate.custom_surrogate(custom_fast_sigmoid)
 
+# Gradient Function Graph -----------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+
+
 # Optimization ----------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 #use L1 and L2  along with data augmentation to help help overfitting,
@@ -330,6 +378,9 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
     return reg_loss*coef
 
 #end of def regularization(model:nn.Module, reg_type:str, coef:float)
+
+# L1 & L2 Graph ---------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
 
 # Hardware Report -------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -366,6 +417,11 @@ def training_loop(net_model,optimizer):
     #end of for epoch in range (num_epoch)
     return net_model
 #end of def training_loop(net_model, optimizer)
+
+# Training Loop Graph ---------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+
 
 #define objective for optuna as beta and lr and run training loop
 def objective(trial):
