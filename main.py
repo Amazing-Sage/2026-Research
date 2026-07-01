@@ -69,6 +69,7 @@ transform = transforms.Compose([
             transforms.Normalize((0,),(1,))])
 
 test_transform= transforms.Compose([
+    transforms.Grayscale(1),
     transforms.ToTensor(), 
     transforms.Normalize((0,),(1,))])
 
@@ -297,10 +298,6 @@ loss_val = loss_fn(spk_rec, targets)
 #(using cross entropy. 0.1 due to 10% chance prob. per class which is 2.30, should be this or less)
 print(f"Loss Value: {loss_val.item()}")
 
-# Loss Function Graph ---------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------------------
-
-
 
 #define hardware report -------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -362,7 +359,7 @@ beta=0.95
 
 num_epoch=1
 loss_hist=[]
-test_acc_hist=[]
+test_loss_hist=[]
 counter=0
 
 optimizer = torch.optim.Adam(net_model.parameters(), lr=1e-2, betas=(0.9, 0.999), weight_decay=1e-4)
@@ -376,19 +373,53 @@ def regularization(model:nn.Module, reg_type:str, coef:float):
         reg_loss+= torch.norm(param, int_type)
     #end for param in module.parameters()
     return reg_loss*coef
-
 #end of def regularization(model:nn.Module, reg_type:str, coef:float)
+
+# Hardware Report -------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+generate_hardware_report(net_model)
 
 # L1 & L2 Graph ---------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
 
-# Hardware Report -------------------------------------------------------------------------------------------
-#------------------------------------------------------------------------------------------------------------
-generate_hardware_report(net_model)
 
 # Training Loop (in a definition so it can run in optuna) ---------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
-def training_loop(net_model,optimizer):
+
+def test_set(net_model,test_loss_hist):
+    #test set
+    correct=0
+    total=0
+    with torch.no_grad():
+        net_model.eval()
+        test_data, test_targets= next(iter(test_loader))
+        test_data =test_data.to(device)
+        test_targets = test_targets.to(device)
+        
+        grayscale_data= data.mean(dim=1)
+                
+        #test set foward pass 
+        test_spk, test_mem= net_model(test_data.view(batch_size,-1))
+                
+        #test set loss 
+        test_loss = loss_fn(test_spk, test_targets) 
+            
+        #calculate total accuracy 
+        _,predicted= test_spk.sum(dim=0).max(1)
+        total +=test_targets.size(0)
+        correct +=(predicted == test_targets). sum().item()
+        
+        test_loss_hist.append(test_loss.item())
+        
+        accuracy=(correct/total)*100
+        
+    #end of with torch.no_grad()
+    return net_model,test_loss_hist,accuracy 
+#end of def test_set(net_model, optimizer)
+
+def training_loop(net_model,optimizer,test_loss_hist):
+    loss_val=0
     for epoch in range (num_epoch):
         for data, targets in iter(train_loader):
             #Zero the gradients 
@@ -401,7 +432,7 @@ def training_loop(net_model,optimizer):
             spk_rec,_=net_model(grayscale_data.view(data.size(0),-1))
             
             #bass loss calculation 
-            loss_val=loss_fn(spk_rec, targets)
+            loss_val =loss_fn(spk_rec, targets)
 
             #L1 penalty 
             regularization(net_model,'l1',l1_alpha)
@@ -411,17 +442,36 @@ def training_loop(net_model,optimizer):
             #backward pass 
             total_loss.backward()
             
+            #append loss history for graphing 
+            loss_hist.append(total_loss.item())
+            
+            #call test set
+            net_model, test_loss_hist,accuracy=test_set(net_model, test_loss_hist)
+            
             #optimizer step 
             optimizer.step()
+            
         #end of for data, targets in iter(train_loader) 
     #end of for epoch in range (num_epoch)
-    return net_model
+    return net_model,loss_hist,test_loss_hist
 #end of def training_loop(net_model, optimizer)
 
-# Training Loop Graph ---------------------------------------------------------------------------------------
+# Training Loop and loss function Graph ---------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+net_model,loss_hist,test_loss_hist= training_loop(net_model,optimizer,test_loss_hist)
 
+# Plot Loss
+fig = plt.figure(facecolor="w", figsize=(10, 5))
+plt.plot(loss_hist)
+plt.plot(test_loss_hist)
+plt.title("Loss Curves")
+plt.legend(["Train Loss", "Test Loss"])
+plt.xlabel("Iteration")
+plt.ylabel("Loss")
 
+plt.savefig("plots/Training and Loss.png", dpi=300, bbox_inches="tight")
+print("\nPlot saved successfully as Training and Loss.png!")
+plt.show()
 
 #define objective for optuna as beta and lr and run training loop
 def objective(trial):
@@ -433,7 +483,7 @@ def objective(trial):
     optimizer=torch.optim.Adam(net.parameters(), lr=lr)
     
     #train model 
-    training_net =training_loop(net, optimizer)
+    training_net =training_loop(net, optimizer,test_loss_hist)
     training_net.eval()
     
     correct=0 
@@ -458,8 +508,10 @@ def objective(trial):
     #run training loop function and get a score 
     accuracy=100 *correct/total
     
+    print(f"Trial {trial.number}: Test Accuracy = {accuracy}%")
+    
     return accuracy
-#end of def objective(trial)
+#end of def objective(trial,epoch)
 
 
 # Hardware Report -------------------------------------------------------------------------------------------
