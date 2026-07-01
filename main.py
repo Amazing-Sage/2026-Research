@@ -9,6 +9,7 @@ from snntorch import functional as SF
 from snntorch import utils
 from snntorch import spikeplot as splt
 from snntorch import surrogate
+import snntorch.surrogate as surrogate
 
 import torch
 import torchinfo
@@ -343,8 +344,34 @@ spike_grad= surrogate.custom_surrogate(custom_fast_sigmoid)
 
 # Gradient Function Graph -----------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+#moving neuron in mem pot from below and above threashold
+mem_pot=torch.linspace(-2,2,1000,requires_grad=True)
 
+#slope 25
+surrogate_func= surrogate.fast_sigmoid(slope=25)
 
+#run mock forward pass and trigger backpropogation to isolate gradient 
+spike =surrogate_func(mem_pot)
+spike.sum().backward()
+
+#extract gradient data for plotting 
+gradients =mem_pot.grad.numpy()
+mem_x= mem_pot.detach().numpy()
+
+#plot surrogate gradient curve 
+plt.figure(figsize=(8, 4.5))
+plt.plot(mem_x, gradients, color='crimson', linewidth=2, label='Fast Sigmoid Gradient')
+plt.axvline(x=0, color='black', linestyle='--', alpha=0.6, label='Spiking Threshold ($V_{th}$)')
+
+plt.title("Default Surrogate Gradient Behavior")
+plt.xlabel("Membrane Potential minus Threshold ($V_{mem} - V_{th}$)")
+plt.ylabel("Gradient Magnitude (Learning Signal)")
+plt.legend()
+plt.grid(True, alpha=0.3)
+plt.show()
+
+plt.savefig("plots/Default Surrogate Gradient Behavior.png", dpi=300, bbox_inches="tight")
+print("Plot saved successfully as Default Surrogate Gradient Behavior.png!")
 
 # Optimization ----------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
@@ -382,6 +409,30 @@ generate_hardware_report(net_model)
 
 # L1 & L2 Graph ---------------------------------------------------------------------------------------------
 #------------------------------------------------------------------------------------------------------------
+#simulate range of weight vales from neg to pos 
+weights = torch.linspace(-2,2,1000)
+
+#calculate L1 loss (abs val) and L2 loss (sqr val)
+l1_penalty= torch.abs(weights)
+l2_penalty= torch.pow(weights,2)
+
+#plotL1 and L2 penalty curves 
+plt.figure(figsize=(8, 4.5))
+plt.plot(weights.numpy(), l1_penalty.numpy(), color='darkorange', linewidth=2, label='L1 Penalty ($|w|$)')
+plt.plot(weights.numpy(), l2_penalty.numpy(), color='dodgerblue', linewidth=2, label='L2 Penalty ($w^2$)')
+plt.axvline(x=0, color='black', linestyle='--', alpha=0.5)
+
+plt.title("L1 vs L2 Regularization Penalty Shapes")
+plt.xlabel("Weight Value ($w$)")
+plt.ylabel("Penalty Magnitude (Loss Added)")
+plt.legend()
+plt.grid(True, alpha=0.3)
+
+plt.savefig("plots/L1 vs L2 Regularization Penalty Shapes.png", dpi=300, bbox_inches="tight")
+print("\nPlot saved successfully as L1 vs L2 Regularization Penalty Shapes.png!")
+plt.show()
+
+
 
 
 # Training Loop (in a definition so it can run in optuna) ---------------------------------------------------
@@ -483,7 +534,7 @@ def objective(trial):
     optimizer=torch.optim.Adam(net.parameters(), lr=lr)
     
     #train model 
-    training_net =training_loop(net, optimizer,test_loss_hist)
+    training_net,_,_ =training_loop(net, optimizer,test_loss_hist)
     training_net.eval()
     
     correct=0 
@@ -593,4 +644,4 @@ print("\nparameters:")
 print("_______________________________________________\n")
 
 for key, value in trial.params.items():
-    print(f"    {key}: {value}")
+    print(f" {key}: {value}")
