@@ -4,3 +4,9 @@ __pycache__/
 sim_build/
 *.vvp
 *.xml
+*.log
+*.pt
+*.pth
+*.ckpt
+epochs/
+logs/
