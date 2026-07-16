@@ -1,0 +1,10 @@
+{
+    "git.ignoreLimitWarning": true,
+    "terminal.integrated.scrollback": 500000,
+    "iverilog.runAtFileLocation": true,
+    "iverilog.args": [
+        "-g2012",
+        "${workspaceFolder}/lif_neuron.v",
+        "${workspaceFolder}/tb_lif_neuron.v"
+    ]
+}

@@ -1,0 +1,161 @@
+#=================================================================
+#Weight Behavior
+#=================================================================
+# def weight_behavior(net,trial_num,l1_lambda):
+    
+#     #extract weight values as 1D arrays 
+#     fc1_weights= net.fc1.weight.data.cpu().numpy().flatten()
+#     fc2_weights= net.fc2.weight.data.cpu().numpy().flatten()
+    
+#     #histogram plots 
+#     fig,(ax1,ax2) =plt.subplots(1,2, figsize=(12,5))
+    
+#     #plot 11 fc1 
+#     ax1.hist(fc1_weights, bins=50, color='crimson', alpha=0.7)
+#     ax1.set_title("FC1 Weight Distribution")
+#     ax1.set_xlabel("Weight Value")
+#     ax1.set_ylabel("Count")
+#     ax1.grid(True, alpha=0.3)
+    
+#     #plot fc2
+#     ax2.hist(fc2_weights, bins=50, color='teal', alpha=0.7)
+#     ax2.set_title("FC2 Weight Distribution")
+#     ax2.set_xlabel("Weight Value")
+#     ax2.grid(True, alpha=0.3)
+    
+#     plt.suptitle(f"Trial {trial_num} Weight Distributions (L1 Alpha: {l1_lambda:.6f})")
+    
+#     plt.savefig("plots/Weight Distributions.png", dpi=300, bbox_inches="tight")
+#     print(f"\nPlot saved successfully as plots/Weight_Distributions_{trial_num}.png!")
+#     plt.close(fig)#clean memory
+# #end of weight_behavior(net,trial_num,l1_lambda)
+
+#=================================================================
+#L1 & L2 Graph
+#=================================================================
+# #simulate range of weight vales from neg to pos 
+# weights = torch.linspace(-2,2,1000)
+
+# #calculate L1 loss (abs val) and L2 loss (sqr val)
+# l1_penalty= torch.abs(weights)
+# l2_penalty= torch.pow(weights,2)
+
+# #plotL1 and L2 penalty curves 
+# plt.figure(figsize=(8, 4.5))
+# plt.plot(weights.numpy(), l1_penalty.numpy(), color='darkorange', linewidth=2, label='L1 Penalty ($|w|$)')
+# plt.plot(weights.numpy(), l2_penalty.numpy(), color='dodgerblue', linewidth=2, label='L2 Penalty ($w^2$)')
+# plt.axvline(x=0, color='black', linestyle='--', alpha=0.5)
+
+# plt.title("L1 vs L2 Regularization Penalty Shapes")
+# plt.xlabel("Weight Value ($w$)")
+# plt.ylabel("Penalty Magnitude (Loss Added)")
+# plt.legend()
+# plt.grid(True, alpha=0.3)
+
+# plt.savefig("plots/L1 vs L2 Regularization Penalty Shapes.png", dpi=300, bbox_inches="tight")
+# print("\nPlot saved successfully as L1 vs L2 Regularization Penalty Shapes.png!")
+# plt.show()
+
+#=================================================================
+#alpha neuron
+#=================================================================
+# ps.plot_cur_mem_spk(spk_in[:num_steps], mem_rec, spk_rec, "Alpha Neuron Model With Input Spikes")
+# plt.savefig("plots/Alpha Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
+# print("Plot saved successfully as Alpha Neuron Model With Input Spikes.png!")
+
+#=================================================================
+#plot synaptic neurons 
+#=================================================================
+# #plot synaptic neurons 
+# ps.plot_cur_mem_spk(syn_rec, mem_rec, spk_rec, title="Synaptic Neuron Model With Input Spikes")
+# plt.savefig("plots/Synaptic Neuron Model With Input Spikes.png", dpi=300, bbox_inches="tight")
+# print("Plot saved successfully as Synaptic Neuron Model With Input Spikes.png!")
+
+#=================================================================
+#Lapicque Neuron Model With Periodic Firing.
+#=================================================================
+# ps.plot_cur_mem_spk(cur_in, mem_rec, spk_rec, thr_line=1, ylim_max2=1.3,
+#                  title="Lapicque Neuron Model With Periodic Firing")
+# plt.savefig("plots/Lapicque Neuron Model With Periodic Firing.png", dpi=300, bbox_inches="tight")
+# print("Plot saved successfully as Lapicque Neuron Model With Periodic Firing.png!")
+
+#=================================================================
+#plot surrogate gradient curve 
+#=================================================================
+# #plot surrogate gradient curve 
+# plt.figure(figsize=(8, 4.5))
+# plt.plot(mem_x, gradients, color='crimson', linewidth=2, label='Fast Sigmoid Gradient')
+# plt.axvline(x=0, color='black', linestyle='--', alpha=0.6, label='Spiking Threshold ($V_{th}$)')
+
+# plt.title("Default Surrogate Gradient Behavior")
+# plt.xlabel("Membrane Potential minus Threshold ($V_{mem} - V_{th}$)")
+# plt.ylabel("Gradient Magnitude (Learning Signal)")
+# plt.legend()
+# plt.grid(True, alpha=0.3)
+# plt.show()
+
+# plt.savefig("plots/Default Surrogate Gradient Behavior.png", dpi=300, bbox_inches="tight")
+# print("Plot saved successfully as Default Surrogate Gradient Behavior.png!")
+
+# Gradient Function Graph -----------------------------------------------------------------------------------
+# #------------------------------------------------------------------------------------------------------------
+# #moving neuron in mem pot from below and above threshold
+# mem_pot=torch.linspace(-2,2,1000,requires_grad=True)
+
+# #slope 25
+# surrogate_func= surrogate.fast_sigmoid(slope=25)
+
+# #run mock forward pass and trigger backpropogation to isolate gradient 
+# spike =surrogate_func(mem_pot)
+# spike.sum().backward()
+
+# #extract gradient data for plotting 
+# gradients =mem_pot.grad.numpy()
+# mem_x= mem_pot.detach().numpy()
+
+#============================================================================================================
+#Define Layers and LIF
+#============================================================================================================
+# print("\n\n Define Layers and LIF...")
+# print("==============================================================\n")
+# # Set up ----------------------------------------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+
+# # Network Architecture
+# num_inputs = 34*34 # number of input neurons
+# num_outputs = 2 #output layer neurons
+
+# # Temporal Dynamics
+# num_steps = 25 #number of steps to 
+# slope=50 #og at 50
+# threshold=0.2 #nuron firing limit
+
+# #class Net(nn.Module)
+
+# LIF Graph using Lapicqe neuron model ----------------------------------------------------------------------
+#------------------------------------------------------------------------------------------------------------
+# num_steps=200
+
+# #LIF with reset definition
+
+# #create same neuron 
+# lif2=snn.Lapicque(R=5.1,C=5e-3, time_step=1e-3)
+
+# #initialize inputs and outputs 
+# cur_in=torch.cat((torch.zeros(10,1), torch.ones(190,1)*0.2),0) #change 0.4 to change current
+# mem=torch.zeros(1)
+# spk_out=torch.zeros(1)
+
+# mem_rec=[mem]
+# spk_rec=[spk_out]
+
+# #run across 100 time steps 
+# for step in range(num_steps):
+#     spk_out,mem=lif2(cur_in[step],mem)
+#     mem_rec.append(mem) 
+#     spk_rec.append(spk_out)
+# # end of run across 100 time steps 
+
+# #convert list to tensors 
+# mem_rec=torch.stack(mem_rec) 
+# spk_rec=torch.stack(spk_rec)
