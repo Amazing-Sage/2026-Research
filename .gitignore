@@ -1,0 +1,14 @@
+cat <<EOT > .gitignore
+data/
+__pycache__/
+*.pyc
+sim_build/
+*.vvp
+*.xml
+*.log
+*.pt
+*.pth
+*.ckpt
+epochs/
+logs/
+EOT
