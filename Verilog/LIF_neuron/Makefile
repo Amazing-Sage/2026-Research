@@ -22,6 +22,8 @@ ifeq ($(SIM), icarus)
     COMPILE_ARGS += -g2012
     # Search the local directory first
     COMPILE_ARGS += -I$(shell pwd)
+    # Search from the root home directory where 2026-Research lives
+    COMPILE_ARGS += -I/u/bakervir/
     # Search the parent directory (Verilog/) as a fallback
     COMPILE_ARGS += -I$(shell pwd)/..
 endif

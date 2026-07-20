@@ -32,8 +32,8 @@ always @(posedge clk) begin
 
         // neuron not reseting we add new incoming signals to current value
         // here we also add a -1 to on every clock cycle so the charge decays over time 
-        if (v_mem > 0)begin
-            v_mem <=v_mem -(v_after_reset >>> `LEAK_SHIFT)+x_in; 
+        if (v_after_reset > 0)begin
+            v_mem <=v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+x_in; 
 
         end else begin 
             v_mem <= v_after_reset + x_in; // add input to prevent underflow
