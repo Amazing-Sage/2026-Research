@@ -404,3 +404,43 @@ def objective(trial, train_loader, test_loader):
     
     return accuracy
 #end of def objective(trial,epoch)
+
+#============================================================================================================
+# Hardware aligned lif for verilog 
+#============================================================================================================
+#this is the definition that runs the pytorch like the verilog to make sure both of them are the same
+def sim_lif(v_mem, ref_counter, total_sum, threshold=10, leak_shift=2):
+    #refractory lockout check 
+    if ref_counter >0:
+        return 0,0, ref_counter -1 #decrement ref counter with v_mem and spikeout=0
+    
+    #check spike condition 
+    if(v_mem +total_sum) >threshold:
+        next_spike=1
+    else:
+        next_spike=0
+    # end else
+    
+    if next_spike:
+        #if the next spike, mesure how far it went from the threashold
+        v_after_reset =v_mem -threshold
+        v_next= (v_after_reset- (v_after_reset >>leak_shift) + total_sum)
+        
+        #leak & integrate 
+        new_v_mem = v_next -threshold #soft reset 
+        new_ref=4 #4 cycle refractory  to prevent hyperspiking
+            
+        return new_v_mem,1,new_ref
+    #end if
+    else: #if there's no spike 
+        #prevent mem pot from droping negititve and clamp to 0 
+        if v_mem <0:
+            new_v_mem=0
+        
+        else:
+            leak= v_mem >>leak_shift #calculalte leak using bitwise right shift  by 2. divides 2^2 so leak is 25% (1/4)
+            new_v_mem = v_mem -leak +total_sum #take current input sub leak amound and add input current for the LIF calcualtion
+        return new_v_mem,0,0 #returns new calc pot 
+    #end else
+
+#end sim_lif
