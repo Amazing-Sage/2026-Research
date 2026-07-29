@@ -1,6 +1,6 @@
 module CPA(
     input signed [7:0] sum, 
-    input signed [8:0] carry, 
+    input [8:0] carry, 
 
     output signed[7:0] product
 );

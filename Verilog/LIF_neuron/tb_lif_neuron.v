@@ -1,7 +1,7 @@
 //this file is the test bench of the lif_neuron file
 //using cocotb to test lif which is a bridge between python and verilog, this is the verilog bridge
 `timescale 1ns / 1ps //defines time unit and precision 
-`include "lif_neuron.v"
+//`include "lif_neuron.v"
 
 module tb_lif_neuron;
 
@@ -10,7 +10,7 @@ module tb_lif_neuron;
     reg reset;
     reg [63:0] x_in;
     reg [63:0] w_out;
-    wire [31:0] v_mem; 
+    wire signed [31:0] v_mem; 
     wire spike_out; 
     reg mult_en;
     reg refract_cycles;
@@ -26,6 +26,8 @@ module tb_lif_neuron;
     reg  [3:0] read_addr;
     wire signed [3:0] w_out_data;
      
+    // wire [3:0] ref_counter_debug; 
+    // assign ref_counter_debug= dut.ref_counter;
     
     // plug in the neuron device under test (DUT) 
     lif_neuron dut(
@@ -52,8 +54,9 @@ module tb_lif_neuron;
 
     initial begin 
         clk =0;
-        $monitor("Time=%0t | reset=%b | read_en=%b | x_in=%d | v_mem=%d", $time, reset, read_en, x_in, v_mem);
-        //apply x input 
+        // $monitor("Time=%0t | reset=%b | read_en=%b | x_in=%d | v_mem=%d | spike=%b | is_refractor=%b | ref_counter_debug=%b", 
+        //             $time, reset, read_en, x_in, v_mem, spike_out, dut.is_refractor, ref_counter_debug);
+        // //apply x input 
         reset =1'b1;
         write_en=1'b0;
         read_en= 1'b0; 
@@ -84,8 +87,26 @@ module tb_lif_neuron;
 
         //apply input current 
         x_in=4'd5;
-        #10;
-        $display("value read from v_mem = %d", v_mem);
+        
+        //to see refractory behavior we use @(posedge clk);
+        @(posedge clk);
+        $display("1st value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("2nd value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("3rd value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("4th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("5th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("6th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("7th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("8th value read from v_mem = %d spike=%b", v_mem,spike_out);
+
+
 
         //end simulation 
         #10;

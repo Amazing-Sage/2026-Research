@@ -2,7 +2,7 @@
 `timescale 1ns / 1ps
 // Paste shared parameters directly into the module namespace
 `include "definitions.vh"
-`include "weight_buff.v"
+//`include "../Memory_till/weight_buff.v"
 
 module lif_neuron #(
     parameter num_inputs =4)(
@@ -11,7 +11,7 @@ module lif_neuron #(
     input wire signed [(16*num_inputs)-1:0] x_in, 
     
     output reg spike_out,
-    output reg signed [3:0] v_mem,
+    output reg signed [31:0] v_mem,
     output wire signed [3:0] v_mem_bit,
 
     //loading weights 
@@ -24,11 +24,15 @@ module lif_neuron #(
     input wire [3:0] read_addr
     
 );
-wire signed [3:0] w_out_data;
-wire signed [(16*num_inputs)-1:0] w_in;
+wire signed [(4*num_inputs)-1:0] w_out_data; //[0:num_inputs-1];
+wire signed  [(16*num_inputs)-1:0] w_in; //
+assign w_in ={num_inputs{4'b0010}};
 
+//assign w_in =w_out_data;
 //intantiation of weight buffers for memory tilling 
-weight_buffer uut(
+weight_buffer #(
+    .num_inputs(num_inputs)
+    )uut(
     .clk(clk),
     .reset(reset),
     .write_en(write_en),
@@ -40,7 +44,7 @@ weight_buffer uut(
 
     );
 
-//inputs into internal wires (for systolic array)///////////////////////////////////////////////
+//inputs into internal wires (for bw multiplier)///////////////////////////////////////////////
 //declared temp variables
 reg signed [15:0] v_after_reset;
 reg next_spike;
@@ -50,29 +54,49 @@ wire signed [31:0] total_sum; //signed keeps negitive numbers out
 //scale sum_temp into 16 bits from 32 bits 
 assign total_sum = sum_temp; //>>> 16;
 
-//define clock cycle parameters 
+//define clock cycle parameters for refracoring cycles and global clock
 parameter refract_cycles=4; 
 reg signed [3:0] ref_counter; 
 
-//original wires signed logic is saved on personal notion 
-wire signed [31:0] products [0:num_inputs-1]; 
-genvar i;
-generate
-    for (i=0; i<num_inputs; i=i+1)begin :mult_gen;
-        assign products[i]= x_in[(16*i)+:16]*w_in[(16*i)+:16];
-    end
-endgenerate
+wire is_refractor; 
+wire neuron_update_en; 
 
+assign is_refractor= (ref_counter>0);
+//combine multiplier enable and refractory protection 
+assign neuron_update_en= mult_en && !is_refractor;
+
+
+//original wires signed logic is saved on personal notion
+wire signed [7:0] bw_products [0:num_inputs-1]; // output of each bw multiplier 
+wire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [31:0] leak = v_mem >>> `LEAK_SHIFT; 
 
 assign  tile_read_en = (x_in !=0); //only read memory if there's a incoming spike
 assign  mult_en = tile_read_en && (w_in !=0);//active high when valid spike input used for zero skipping
-
 //help quantizise into 4 bits and clamp interal 32 bit to 4 bit signed output 
 //? checks conition if true consition before : is chosed if not then after 
 assign v_mem_bit = ($signed(v_mem) >32'd7) ? 4'd7://upper clamp
                 ($signed(v_mem) < -32'd7) ? -4'd8://lower clamp 
                 v_mem[3:0]; //sliced 4 bit value
+
+
+generate
+    genvar i;
+
+    for (i=0; i<num_inputs; i=i+1)begin :mult_gen;
+    //include bw multiplier bc it's the one doing the math 
+        bw_multiplier mult(
+            .enable(mult_en),
+            .A(x_in[(16*i)+:4]),
+            .B(w_in[(16*i)+:4]),
+            .product(bw_products[i])
+        );
+
+        assign products[i]= (bw_products[i]<0) ? 32'd0: {{24{bw_products[i][7]}},bw_products[i]};//x_in[(16*i)+:16]*w_in[(16*i)+:16];
+    end
+
+endgenerate
+
 //procedural logic////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //sum loops for input products
@@ -87,7 +111,7 @@ end
 //combonational pipeline for membrane pot 
 always @(*) begin 
     //determine spike condition 
-    if(($signed(v_mem) + $signed(total_sum[17:8])) >= $signed(`THREASHOLD))begin
+    if(($signed(v_mem) + $signed(total_sum)) >= $signed(`THREASHOLD))begin
         next_spike= 1'b1;
     end else begin 
         next_spike= 1'b0;
@@ -100,10 +124,15 @@ always @(*) begin
         v_after_reset= v_mem;
     end
     //compute next membrane pot 
-    v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum[17:8]}); 
+    v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
+
+    // $display("debug v_after_reset=%d total_sum= %d v_next=%d next_spike=%b",v_after_reset,total_sum,v_next,next_spike);
+
 end
 
 always @(posedge clk or posedge reset) begin 
+    // $display("clk=%0t x_in=%d mult_en=%b refractory=%b update=%b total_sum=%d v_mem=%d"
+    //             ,$time,x_in,mult_en,is_refractor,neuron_update_en,total_sum,v_mem);
     //clock cycles//////////////////////////////////////////////////////
     if(reset)begin 
         v_mem <= 32'b0;   // clear mem pot and carry any left over spiked out of membrane to the next and clear
@@ -117,7 +146,7 @@ always @(posedge clk or posedge reset) begin
         spike_out <=1'b0;
     end
     else begin //non refractoring mode
-        if (mult_en)begin 
+        if (neuron_update_en)begin 
             spike_out <= next_spike;
             //v_mem <= v_next;//normal mem integration
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
@@ -138,5 +167,7 @@ always @(posedge clk or posedge reset) begin
         end
     end
 end
-
+// always@(v_mem)begin
+//     $display("v_mem updated = %d at time%0t", v_mem,$time);
+// end
 endmodule

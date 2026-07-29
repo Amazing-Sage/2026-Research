@@ -1,6 +1,8 @@
 //this file serves as our local memory tilling
 
-module weight_buffer (
+module weight_buffer #(
+    parameter num_inputs =4
+    )(
     input wire clk, 
     input wire reset, 
 
@@ -12,7 +14,7 @@ module weight_buffer (
     //read interface (feed neuron) 
     input wire read_en,
     input wire [3:0] read_addr,
-    output reg signed [3:0] w_out_data
+    output reg signed [(4*num_inputs)-1:0] w_out_data
 );
 //memory array 4 bit signed weight
 reg signed [3:0] memory [0:15];

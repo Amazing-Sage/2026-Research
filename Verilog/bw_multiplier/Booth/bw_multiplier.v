@@ -17,14 +17,14 @@ module bw_multiplier(
     wire signed [2:0] op1;
 
     //partial prducts
-    wire signed [7:0] shifted_partial1; 
-    wire signed [7:0] partial0 
-    wire signed [7:0] partial1
-    assign shifted_partial1= partial1>>2; 
+    //wire signed [7:0] shifted_partial1; 
+    wire signed [7:0] partial0 ;
+    wire signed [7:0] partial1;
+    //assign shifted_partial1= partial1>>2; 
 
     //wallace tree outputs
     wire signed [7:0] w_sum; 
-    wire signed [8:0] w_carry;
+    wire [8:0] w_carry;
 
     //radix 4 booth grouping (4 bits)
     bw_gen gen(
@@ -35,17 +35,17 @@ module bw_multiplier(
 
     //initiate two encoders 
     bw_encoder enc0(
-        .A(A),
+        // .A(A),
         .bits(booth_group0),
-        .op(op0),
-        .partial_prod(partial0)
+        .op(op0)
+        // .partial_prod(partial0)
     );
 
     bw_encoder enc1(
-        .B(B),
+        // .B(B),
         .bits(booth_group1),
-        .op(op1),
-        .partial_prod(partial0)
+        .op(op1)
+        // .partial_prod(partial1)
     );
 
     //gernarte partial products
@@ -63,20 +63,22 @@ module bw_multiplier(
         .op(op1),
         .partial_prod(raw_partial1)
     );
-    assign partial1= raw_partial1 <<2;
+    assign partial1= $signed(raw_partial1 <<2);
 
-    //wallace tree reduction 
-    wallace_tree WT(
-        .partial0(partial0),
-        .partial1(partial1),
-        .sum(wallace_sum),
-        .carry(wallace_carry)
-    );
+    //wallace tree reduction // adding this gave us an error on every negitive*something
+    // wallace_tree WT(
+    //     .partial0(partial0),
+    //     .partial1(partial1),
+    //     .sum(w_sum),
+    //     .carry(w_carry)
+    // );
+    assign w_sum= partial0+partial1;
+    assign w_carry = 9'b0;
 
     //carry propagate adder (CPA)
     CPA CPA_unit(
-        .sum(wallace_sum),
-        .carry(wallace_carry),
+        .sum(w_sum),
+        .carry(w_carry),
         .product(product)
     );
 
