@@ -3,7 +3,9 @@ TOPLEVEL_LANG ?= verilog
 
 # Add your Verilog source files
 VERILOG_SOURCES += $(shell pwd)/lif_neuron.v
-
+VERILOG_SOURCES += $(shell pwd)/../Memory_till/weight_buff.v
+VERILOG_SOURCES += $(shell pwd)/../bw_multiplier/Booth/bw_multiplier.v
+sed -i '/VERILOG_SOURCES += \$(shell pwd)\/\.\.\/bw_multiplier\/Booth\/bw_multiplier.v/a VERILOG_SOURCES += $(shell pwd)/../bw_multiplier/Booth/bw_gen.v\nVERILOG_SOURCES += $(shell pwd)/../bw_multiplier/Booth/bw_encoder.v\nVERILOG_SOURCES += $(shell pwd)/../bw_multiplier/Booth/bw_partial_product.v\nVERILOG_SOURCES += $(shell pwd)/../bw_multiplier/Wallace/CPA.v' Makefile
 # Top-level module name inside your Verilog
 TOPLEVEL = lif_neuron
 

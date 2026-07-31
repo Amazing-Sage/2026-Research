@@ -26,7 +26,7 @@ module lif_neuron #(
 );
 wire signed [(4*num_inputs)-1:0] w_out_data; //[0:num_inputs-1];
 wire signed  [(16*num_inputs)-1:0] w_in; //
-assign w_in ={num_inputs{4'b0010}};
+assign w_in =w_out_data;
 
 //assign w_in =w_out_data;
 //intantiation of weight buffers for memory tilling 
@@ -51,6 +51,8 @@ reg next_spike;
 reg signed [31:0] v_next;
 reg signed [31:0] sum_temp;
 wire signed [31:0] total_sum; //signed keeps negitive numbers out
+wire tile_read_en;
+wire mult_en;
 //scale sum_temp into 16 bits from 32 bits 
 assign total_sum = sum_temp; //>>> 16;
 
@@ -92,7 +94,7 @@ generate
             .product(bw_products[i])
         );
 
-        assign products[i]= (bw_products[i]<0) ? 32'd0: {{24{bw_products[i][7]}},bw_products[i]};//x_in[(16*i)+:16]*w_in[(16*i)+:16];
+        assign products[i]= {{24{bw_products[i][7]}},bw_products[i]};//(bw_products[i]<0) ? 32'd0: 
     end
 
 endgenerate

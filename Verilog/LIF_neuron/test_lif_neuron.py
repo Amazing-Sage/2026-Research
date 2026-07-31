@@ -32,7 +32,7 @@ async def run_test(dut):
     # run pytorch comparison 
     py_vmem=0
     py_ref=0
-    inputs=[2,2,0,10,0] # values sent to each of the 4 channels per cycle
+    inputs=[2,2,0,7,0] # values sent to each of the 4 channels per cycle
     
     #apply reset to hardware 
     dut.reset.value =0
@@ -50,15 +50,27 @@ async def run_test(dut):
     
     #below are our synapses weights 
     #weights initialized 
-    w3,w2,w1,w0= 2,2,2,2
-    dut.w_in.value= (w3<<48) | (w2<<32) |(w1<<16) | w0
+    # w3,w2,w1,w0= 2,2,2,2
+    # dut.w_in.value= (w3<<48) | (w2<<32) |(w1<<16) | w0
+    dut.write_en.value=1
+    dut.w_in.value= 0
+    dut.w_in_data.value= 2
+    await RisingEdge(dut.clk)
+    dut.write_en.value= 0
+    
+    dut.read_en.value= 1
+    dut.read_addr.value= 0
+    await RisingEdge(dut.clk)
+    dut.read_en.value= 0
+    await Timer(1,unit="ns")
         
     #start test loop 
     for i, input_val in enumerate(inputs):
         #packed inputs initialized
-        scaled_val= input_val <<8
-        x3,x2,x1,x0= scaled_val,scaled_val,scaled_val,scaled_val
-        dut.x_in.value= (x3<<48) | (x2<<32) |(x1<<16) | x0
+        # scaled_val= input_val <<8
+        # x3,x2,x1,x0= scaled_val,scaled_val,scaled_val,scaled_val
+        # dut.x_in.value= (x3<<48) | (x2<<32) |(x1<<16) | x0
+        dut.x_in.value= input_val & 0xF
             
         #update inputs 
         # dut.input_val.value
