@@ -1,21 +1,15 @@
 {
-    // --- Git Settings ---
     "git.ignoreLimitWarning": true,
-
-    // --- Terminal Settings ---
     "terminal.integrated.scrollback": 500000,
-
-    // --- Verilog Compiler & Linter Configuration ---
     "iverilog.runAtFileLocation": true,
-    
-    // Default arguments for compiling/running files manually via the extension
     "iverilog.args": [
         "-g2012",
         "-I${workspaceFolder}/2026-Research/Verilog/LIF_neuron",
         "${workspaceFolder}/2026-Research/Verilog/LIF_neuron/lif_neuron.v"
     ],
-
-    // FIX: Must be a single space-separated string.
-    // We point directly to the directory containing 'definitions.vh' using ${workspaceFolder}
-    "verilog.linting.iverilog.arguments": "-I${workspaceFolder}/2026-Research/Verilog/LIF_neuron -I${workspaceFolder}/Verilog/LIF_neuron"
+    "verilog.linting.iverilog.arguments": "-I${workspaceFolder}/2026-Research/Verilog/LIF_neuron -I${workspaceFolder}/Verilog/LIF_neuron",
+    "python.defaultInterpreterPath": "/u/bakervir/snn_env/bin/python",
+    "python.analysis.extraPaths": [
+        "/u/bakervir/snn_env/lib/python3.12/site-packages"
+    ]
 }

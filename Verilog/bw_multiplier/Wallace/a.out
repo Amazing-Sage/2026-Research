@@ -1,0 +1,47 @@
+#! /usr/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/system.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2005_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/va_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2009.vpi";
+S_0x601180037c60 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x60118004bce0 .scope module, "wallace_tree" "wallace_tree" 3 1;
+ .timescale 0 0;
+    .port_info 0 /INPUT 8 "partial0";
+    .port_info 1 /INPUT 8 "partial1";
+    .port_info 2 /OUTPUT 8 "sum";
+    .port_info 3 /OUTPUT 8 "carry";
+v0x60118005db80_0 .net/s "carry", 7 0, L_0x60118005e410;  1 drivers
+o0x7f06e0dcf1c8 .functor BUFZ 8, C4<zzzzzzzz>; HiZ drive
+v0x60118005dc80_0 .net/s "partial0", 7 0, o0x7f06e0dcf1c8;  0 drivers
+o0x7f06e0dcf1f8 .functor BUFZ 8, C4<zzzzzzzz>; HiZ drive
+v0x60118005dd60_0 .net/s "partial1", 7 0, o0x7f06e0dcf1f8;  0 drivers
+v0x60118005de20_0 .net/s "sum", 7 0, L_0x60118005e2f0;  1 drivers
+L_0x60118005e1b0 .part o0x7f06e0dcf1c8, 0, 1;
+L_0x60118005e250 .part o0x7f06e0dcf1f8, 0, 1;
+L_0x60118005e2f0 .part/pv L_0x60118005df80, 0, 1, 8;
+L_0x60118005e410 .part/pv L_0x60118005e070, 0, 1, 8;
+S_0x60118004be70 .scope module, "DUT" "half_adder" 3 12, 4 1 0, S_0x60118004bce0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "a";
+    .port_info 1 /INPUT 1 "b";
+    .port_info 2 /OUTPUT 1 "sum";
+    .port_info 3 /OUTPUT 1 "carry";
+L_0x60118005df80 .functor XOR 1, L_0x60118005e1b0, L_0x60118005e250, C4<0>, C4<0>;
+L_0x60118005e070 .functor AND 1, L_0x60118005e1b0, L_0x60118005e250, C4<1>, C4<1>;
+v0x60118004c0c0_0 .net "a", 0 0, L_0x60118005e1b0;  1 drivers
+v0x60118005d8e0_0 .net "b", 0 0, L_0x60118005e250;  1 drivers
+v0x60118005d9a0_0 .net "carry", 0 0, L_0x60118005e070;  1 drivers
+v0x60118005da40_0 .net "sum", 0 0, L_0x60118005df80;  1 drivers
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "-";
+    "wallace_tree.v";
+    "half_adder.v";
