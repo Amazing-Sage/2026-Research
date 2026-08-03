@@ -16,3 +16,4 @@ sim_build/
 epochs/
 logs/
 NMNIST/
+PyTorch/NMNIST/
