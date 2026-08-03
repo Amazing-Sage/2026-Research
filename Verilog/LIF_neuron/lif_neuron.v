@@ -1,3 +1,4 @@
+//TEST_SAVE_12345
 // This file is for the core neuron logic (v_mem and stuff)
 `timescale 1ns / 1ps
 // Paste shared parameters directly into the module namespace
@@ -81,7 +82,7 @@ assign v_mem_bit = ($signed(v_mem) >32'd7) ? 4'd7://upper clamp
                 ($signed(v_mem) < -32'd7) ? -4'd8://lower clamp 
                 v_mem[3:0]; //sliced 4 bit value
 
-
+//multiplier instantiation and product expansion/////////////////////////////////////////////////////
 generate
     genvar i;
 
@@ -90,12 +91,16 @@ generate
         bw_multiplier mult(
             .enable(mult_en),
             .A(x_in[(16*i)+:4]),
-            .B(w_in[(16*i)+:4]),
+            .B(w_in[(4*i)+:4]),
             .product(bw_products[i])
         );
 
         assign products[i]= {{24{bw_products[i][7]}},bw_products[i]};//(bw_products[i]<0) ? 32'd0: 
     end
+    //debugging 
+    always@(*) begin 
+        $display("mult%0d: A=%d B=%0d product=%d enable= %0b",i,$signed(x_in[(16*i)+:4]),$signed(w_in[(4*i)+:4]),bw_products[i], mult_en);
+    end 
 
 endgenerate
 
