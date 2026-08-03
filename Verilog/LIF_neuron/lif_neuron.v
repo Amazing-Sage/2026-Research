@@ -85,7 +85,6 @@ assign v_mem_bit = ($signed(v_mem) >32'd7) ? 4'd7://upper clamp
                 ($signed(v_mem) < -32'd7) ? -4'd8://lower clamp 
                 v_mem[3:0]; //sliced 4 bit value
 
-
 generate
     genvar i;
 

@@ -5,3 +5,14 @@ snn_env/
 __pycache__/
 build_log.txt
 Verilog/Test_bench/tb_neuron_integ
+data/
+sim_build/
+*.vvp
+*.xml
+*.log
+*.pt
+*.pth
+*.ckpt
+epochs/
+logs/
+NMNIST/

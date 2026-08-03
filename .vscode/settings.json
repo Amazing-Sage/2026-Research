@@ -4,12 +4,19 @@
     "iverilog.runAtFileLocation": true,
     "iverilog.args": [
         "-g2012",
+        "-I/u/bakervir/2026-Research/2026-Research/Verilog/LIF_neuron",
         "-I${workspaceFolder}/2026-Research/Verilog/LIF_neuron",
-        "${workspaceFolder}/2026-Research/Verilog/LIF_neuron/lif_neuron.v"
+        "-I${workspaceFolder}/Verilog/LIF_neuron"
     ],
-    "verilog.linting.iverilog.arguments": "-I${workspaceFolder}/2026-Research/Verilog/LIF_neuron -I${workspaceFolder}/Verilog/LIF_neuron",
+    "verilog.linting.iverilog.arguments": "-I. -I/u/bakervir/2026-Research/2026-Research/Verilog/LIF_neuron -I${workspaceFolder}/2026-Research/Verilog/LIF_neuron -I${workspaceFolder}/Verilog/LIF_neuron",
     "python.defaultInterpreterPath": "/u/bakervir/snn_env/bin/python",
     "python.analysis.extraPaths": [
-        "/u/bakervir/snn_env/lib/python3.12/site-packages"
-    ]
+        "/u/bakervir/snn_env/lib/python3.12/site-packages",
+        "/u/bakervir/2026-Research/2026-Research/Verilog/LIF_neuron",
+        "${workspaceFolder}/2026-Research/Verilog/LIF_neuron",
+        "${workspaceFolder}/Verilog/LIF_neuron"
+    ],
+    "python.analysis.diagnosticSeverityOverrides": {
+        "reportMissingImports": "none"
+    }
 }
