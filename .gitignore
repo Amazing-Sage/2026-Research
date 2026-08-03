@@ -1,15 +1,7 @@
-# cat <<EOT > .gitignore
-data/
-__pycache__/
+.venv/
+snn_env/
+*.vcd
 *.pyc
-sim_build/
-*.vvp
-*.xml
-*.log
-*.pt
-*.pth
-*.ckpt
-epochs/
-logs/
-NMNIST/
-# EOT
+__pycache__/
+build_log.txt
+Verilog/Test_bench/tb_neuron_integ
