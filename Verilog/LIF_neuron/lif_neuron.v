@@ -1,4 +1,3 @@
-//TEST_SAVE_12345
 // This file is for the core neuron logic (v_mem and stuff)
 `timescale 1ns / 1ps
 // Paste shared parameters directly into the module namespace
@@ -25,13 +24,22 @@ module lif_neuron #(
     input wire [3:0] read_addr
     
 );
-wire signed  [3:0] w_out_data; //[(4*num_inputs)-1:0]
-wire signed  [3:0] w_in; //[(4*num_inputs)-1:0]
-assign w_in =w_out_data;
-// keep track of v mem with leak and next calc in v mem 
+wire signed [3:0] w_out_data; //[0:num_inputs-1];
+wire signed  [3:0] w_in; //
+//sign-extend each 4-bit weight lane from the weight buffer into its 16-bit slot
+//(was hardcoded to {num_inputs{4'b0010}}, which ignored the weight buffer entirely)
+
+assign w_in=w_out_data;
+
 reg signed [31:0] v_next_calc;
 
-//assign w_in =w_out_data;
+// generate
+//     genvar j;
+//     for (j=0; j<num_inputs; j=j+1) begin : weight_expand
+//         assign w_in[(16*j)+:16] = {{12{w_out_data[(4*j)+3]}}, w_out_data[(4*j)+:4]};
+//     end
+// endgenerate
+
 //intantiation of weight buffers for memory tilling 
 weight_buffer #(
     .num_inputs(num_inputs)
@@ -54,8 +62,6 @@ reg next_spike;
 reg signed [31:0] v_next;
 reg signed [31:0] sum_temp;
 wire signed [31:0] total_sum; //signed keeps negitive numbers out
-wire tile_read_en;
-wire mult_en;
 //scale sum_temp into 16 bits from 32 bits 
 assign total_sum = sum_temp; //>>> 16;
 
@@ -65,6 +71,8 @@ reg signed [3:0] ref_counter;
 
 wire is_refractor; 
 wire neuron_update_en; 
+wire tile_read_en;
+wire mult_en;
 
 assign is_refractor= (ref_counter>0);
 //combine multiplier enable and refractory protection 
@@ -72,8 +80,8 @@ assign neuron_update_en= mult_en && !is_refractor;
 
 
 //original wires signed logic is saved on personal notion
-wire signed [7:0] bw_products; // output of each bw multiplier 
-wire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
+wire signed [7:0] bw_products ; // output of each bw multiplier 
+//ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [31:0] leak = v_mem >>> `LEAK_SHIFT; 
 
 assign  tile_read_en = (x_in !=0); //only read memory if there's a incoming spike
@@ -84,66 +92,55 @@ assign v_mem_bit = ($signed(v_mem) >32'd7) ? 4'd7://upper clamp
                 ($signed(v_mem) < -32'd7) ? -4'd8://lower clamp 
                 v_mem[3:0]; //sliced 4 bit value
 
-//multiplier instantiation and product expansion/////////////////////////////////////////////////////
 
 bw_multiplier mult(
             .enable(mult_en),
             .A(x_in[3:0]),
             .B(w_in),
             .product(bw_products)
-        );
-// generate
-//     genvar i;
+    );
 
-//     for (i=0; i<num_inputs; i=i+1)begin :mult_gen;
-//     //include bw multiplier bc it's the one doing the math 
-        
+//assign products= {{24{bw_products[7]}},bw_products};//x_in[(16*i)+:16]*w_in[(16*i)+:16];
 
-//         assign products[i]= {{24{bw_products[i][7]}},bw_products[i]};//(bw_products[i]<0) ? 32'd0: 
-//     end
-//     //debugging 
-//     always@(*) begin 
-//         //$display("mult%0d: A=%d B=%0d product=%d enable= %0b",i,$signed(x_in[(16*i)+:4]),$signed(w_in[(4*i)+:4]),bw_products[i], mult_en);
-//         $display("Neuron: x=%0d w=0%d mult_en=%b", $signed(x_in[3:0]),$signed(w_out_data), mult_en);
-//     end 
 
-// endgenerate
 
 //procedural logic////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //sum loops for input products
-always@(*) begin : sum_loop
-    integer k; 
-    sum_temp= 32'd0;
-    for (k=0;k<num_inputs;k=k+1) begin
-        sum_temp=sum_temp+products[k];
-    end
+always@(*) begin 
+    sum_temp={{24{bw_products[7]}}, bw_products};
 end
+// always@(posedge clk or posedge reset)begin 
+//     if(reset)begin
+//         sum_temp <=32'd0;
+//     end 
+//     else if(mult_en) begin 
+//         sum_temp <= sum_temp+{{24{bw_products[7]}},bw_products};
+//     end
+// end
 
-//combonational pipeline for membrane pot
-always @(*) begin
-    //calculate weight sum for input
-    v_next_calc =v_mem -leak +total_sum;
-    //debug and print all values
-        $display("");
-        $display("DBG: vmem=%d leak=%d sum=%d v_next=%d thresh=%d",
-        $signed(v_mem), $signed(leak), $signed(total_sum), $signed(v_next_calc), $signed(`THREASHOLD));
+//combonational pipeline for membrane pot 
+always @(*) begin 
+    v_next_calc =$signed(v_mem) - $signed(leak) +$signed(total_sum);
 
-    //determine spike condition
-    if($signed(v_next_calc) >= $signed(`THREASHOLD))begin //+ $signed(total_sum))
+    //determine spike condition 
+    if($signed(v_next_calc) >= $signed(`THREASHOLD))begin
         next_spike= 1'b1;
-    end else begin
+    end else begin 
         next_spike= 1'b0;
-        end
-    //calculate pot after reset
-    if (next_spike)begin
-        v_after_reset=(v_mem -$signed(`THREASHOLD));
     end
-    else begin
-        v_after_reset= v_mem;
-    end
-    //compute next membrane pot
-    v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({{8{total_sum[7]}},total_sum});
+    v_after_reset=v_mem [15:0];
+    v_next=v_next_calc;
+
+    //calculate pot after reset 
+    // if (next_spike)begin 
+        // v_after_reset=(v_mem -$signed(`THREASHOLD));
+    // end
+    // else begin 
+    //     v_after_reset= v_mem;
+    // end
+    //compute next membrane pot 
+    //v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
 
     // $display("debug v_after_reset=%d total_sum= %d v_next=%d next_spike=%b",v_after_reset,total_sum,v_next,next_spike);
 
@@ -152,8 +149,6 @@ end
 always @(posedge clk or posedge reset) begin 
     // $display("clk=%0t x_in=%d mult_en=%b refractory=%b update=%b total_sum=%d v_mem=%d"
     //             ,$time,x_in,mult_en,is_refractor,neuron_update_en,total_sum,v_mem);
-    $display("next=%d total_sum=%d mult_en=%b w=%d x=%d"
-                ,$signed(v_next),$signed(total_sum), mult_en, $signed(w_in), $signed(x_in[3:0]));
     //clock cycles//////////////////////////////////////////////////////
     if(reset)begin 
         v_mem <= 32'b0;   // clear mem pot and carry any left over spiked out of membrane to the next and clear
@@ -170,21 +165,29 @@ always @(posedge clk or posedge reset) begin
         if (neuron_update_en)begin 
             spike_out <= next_spike;
             //v_mem <= v_next;//normal mem integration
+
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
                 ref_counter <= refract_cycles; 
                 v_mem <=v_next -$signed(`THREASHOLD);    // SOFT RESET
             end
+
             else if (v_next < 0)begin
                 v_mem <=32'd0;//fix potential bottlenecks that synchronous systems tend to have while also changing out the multiplier to the new one to help 
             end 
+
             else begin 
                 //spike_out<= 1'b0;
                 v_mem <= v_next; // add input to prevent underflow
             end 
+
         end else begin 
             spike_out <=1'b0; //skip update on zero 
+            if(v_next < 0)begin 
+                v_mem <=32'd0;
+            end else begin
             v_mem <= v_next; //leaky membrane pot when mult_en is 0
+            end
         end
     end
 end

@@ -63,7 +63,7 @@ module bw_multiplier(
         .op(op1),
         .partial_prod(raw_partial1)
     );
-    assign partial1= $signed({raw_partial1, 2'b00 }<<2);
+    assign partial1= $signed(raw_partial1 <<<2);
 
     //wallace tree reduction // adding this gave us an error on every negitive*something
     // wallace_tree WT(
