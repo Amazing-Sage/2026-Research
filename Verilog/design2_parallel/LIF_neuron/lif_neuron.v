@@ -24,13 +24,22 @@ module lif_neuron #(
     input wire [3:0] read_addr
     
 );
-wire signed [3:0] w_out_data; //[0:num_inputs-1];
-wire signed  [3:0] w_in; //
+wire signed [(4*num_inputs)-1:0] w_out_data; //[0:num_inputs-1];
+wire signed  [(4*num_inputs)-1:0] w_in; //
 //sign-extend each 4-bit weight lane from the weight buffer into its 16-bit slot
-//(was hardcoded to {num_inputs{4'b0010}}, which ignored the weight buffer entirely)
+//(was hardcoded to {num_inputs{4'b0010}}, which ignored the weight buffer entirely
+//4 input lanes for multipliers 
+wire signed [3:0] x0;
+wire signed [3:0] x1;
+wire signed [3:0] x2;
+wire signed [3:0] x3;
+
+assign x0= x_in[3:0];
+assign x1= x_in[19:16];
+assign x2= x_in[35:32];
+assign x3= x_in[51:48];
 
 assign w_in=w_out_data;
-
 reg signed [31:0] v_next_calc;
 
 // generate
@@ -80,7 +89,12 @@ assign neuron_update_en= mult_en && !is_refractor;
 
 
 //original wires signed logic is saved on personal notion
-wire signed [7:0] bw_products ; // output of each bw multiplier 
+ // output of each bw multiplier 
+wire signed [7:0] bw_products0 ;
+wire signed [7:0] bw_products1 ;
+wire signed [7:0] bw_products2 ;
+wire signed [7:0] bw_products3 ;
+
 //ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [31:0] leak = v_mem >>> `LEAK_SHIFT; 
 
@@ -93,11 +107,32 @@ assign v_mem_bit = ($signed(v_mem) >32'd7) ? 4'd7://upper clamp
                 v_mem[3:0]; //sliced 4 bit value
 
 
-bw_multiplier mult(
+bw_multiplier mult0(
             .enable(mult_en),
-            .A(x_in[3:0]),
-            .B(w_in),
-            .product(bw_products)
+            .A(x0),
+            .B(w_in [3:0]),
+            .product(bw_products0)
+    );
+
+bw_multiplier mult1(
+            .enable(mult_en),
+            .A(x1),
+            .B(w_in [7:4]),
+            .product(bw_products1)
+    );
+
+bw_multiplier mult2(
+            .enable(mult_en),
+            .A(x2),
+            .B(w_in [11:8]),
+            .product(bw_products2)
+    );
+
+bw_multiplier mult3(
+            .enable(mult_en),
+            .A(x3),
+            .B(w_in [15:12]),
+            .product(bw_products3)
     );
 
 //assign products= {{24{bw_products[7]}},bw_products};//x_in[(16*i)+:16]*w_in[(16*i)+:16];
@@ -108,7 +143,11 @@ bw_multiplier mult(
 /////////////////////////////////////////////////////////////////////////////////////////////////
 //sum loops for input products
 always@(*) begin 
-    sum_temp={{24{bw_products[7]}}, bw_products};
+    sum_temp=
+            $signed({{24{bw_products0[7]}}, bw_products0})+
+            $signed({{24{bw_products1[7]}}, bw_products1})+
+            $signed({{24{bw_products2[7]}}, bw_products2})+
+            $signed({{24{bw_products3[7]}}, bw_products3});
 end
 // always@(posedge clk or posedge reset)begin 
 //     if(reset)begin
@@ -169,7 +208,7 @@ always @(posedge clk or posedge reset) begin
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
                 ref_counter <= refract_cycles; 
-                v_mem <=v_next -$signed(`THREASHOLD);    // SOFT RESET
+                v_mem <=v_next -$signed(`THREASHOLD);   // SOFT RESET
             end
 
             else if (v_next < 0)begin

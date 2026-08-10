@@ -14,7 +14,7 @@ module weight_buffer #(
     //read interface (feed neuron) 
     input wire read_en,
     input wire [3:0] read_addr,
-    output reg signed [3:0] w_out_data //[(4*num_inputs)-1:0]
+    output reg signed [(4*num_inputs)-1:0] w_out_data //[(4*num_inputs)-1:0]
 );
 //memory array 4 bit signed weight
 reg signed [3:0] memory [0:15];
@@ -26,7 +26,7 @@ always @(posedge clk)begin
     //             reset, write_en, read_en, write_addr, read_addr, $signed(w_in_data));
 
     if(reset)begin 
-        w_out_data <= 4'd0 ;
+        w_out_data <= {(4*num_inputs){1'b0}} ;
     end else begin 
         //check write en 
         if(write_en)begin 
@@ -39,12 +39,12 @@ always @(posedge clk)begin
         if(read_en)begin 
             //load from mem array at read addr into w_out_data 
             
-            // for(k=0; k<num_inputs; k=k+1)begin 
-            //     w_out_data [(4*k)+:4] <= memory[(read_addr*num_inputs)+k];
-            //     $display("wb: addr=%0d weight=%0d", read_addr, $signed(memory[(read_addr*num_inputs)+k]));
-            // end
+            for(k=0; k<num_inputs; k=k+1)begin 
+                w_out_data [(4*k)+:4] <= memory[(read_addr*num_inputs)+k];
+                //$display("wb: addr=%0d weight=%0d", read_addr, $signed(memory[(read_addr*num_inputs)+k]));
+            end
             
-            w_out_data <= memory[read_addr];
+            //w_out_data <= memory[read_addr];
            // $display("wb: addr=%0d weight=%0d", read_addr, $signed(memory[read_addr]));
         end
     end

@@ -102,8 +102,8 @@ module tb_neuron_integ();
        //stumulus code
        #20; //wait after werights are loaded
        read_en= 1'b1;
-       read_addr= 4'd3;
-       x_in={16'd0,16'd0,16'd0,16'd1};
+       read_addr= 4'd0;
+       x_in={16'd1,16'd1,16'd1,16'd1};
        $display("%0t TB: write_addr=%0d data=%0d", $time,write_addr, $signed(w_in_data));
       
        //neuron can't use newly read weight till after this edge
@@ -111,17 +111,34 @@ module tb_neuron_integ();
        #1;
        //keep applying input 1 while reading weight +3
        for(integer i=0; i<15;i=i+1) begin
-           x_in={16'd0,16'd0,16'd0,16'd1};
+           x_in={16'd1,16'd1,16'd1,16'd1};
 
 
            @(posedge clk);
            #1;
 
            //$display("cycle %0d: v_mem=%0d spike=%b",i,$signed(v_mem), spike_out);
-           $display("cycle=%0d: x=%0d w=%0d product=%0d sum=%0d next=%0d v_mem=%0d spike=%0b",
-                    i,$signed(x_in[3:0]), $signed(uut.w_in),$signed(uut.bw_products),$signed(uut.total_sum),
-                    $signed(uut.v_next_calc), $signed(v_mem),spike_out);
-       end
+        //    $display("cycle=%0d: x=%0d w=%0d product=%0d sum=%0d next=%0d v_mem=%0d spike=%0b",
+        //             i,$signed(x_in[3:0]), $signed(uut.w_in),$signed(uut.bw_products0),$signed(uut.total_sum),
+        //             $signed(uut.v_next_calc), $signed(v_mem),spike_out);
+
+            $display("cycle=%0d: x0=%0d x1=%0d x2=%0d x3=%0d | bw_prod0=%0d bw_prod1=%0d bw_prod2=%0d bw_prod3=%0d | sum=%0d next=%0d v_mem=%0d spike=%0d",
+                    i,
+                    $signed(uut.x0),
+                    $signed(uut.x1),
+                    $signed(uut.x2),
+                    $signed(uut.x3),
+
+                    $signed(uut.bw_products0),
+                    $signed(uut.bw_products1),
+                    $signed(uut.bw_products2),
+                    $signed(uut.bw_products3),
+
+                    $signed(uut.total_sum),
+                    $signed(uut.v_next_calc),
+                    $signed(v_mem),
+                    spike_out);
+       end// end of forloop
 
 
        @(negedge clk);
