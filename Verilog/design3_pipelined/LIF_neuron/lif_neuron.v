@@ -70,23 +70,20 @@ reg signed [15:0] v_after_reset;
 reg next_spike;
 reg signed [31:0] v_next;
 reg signed [31:0] sum_temp;
+reg signed [31:0] sum_pipeline_reg;
 wire signed [31:0] total_sum; //signed keeps negitive numbers out
 //scale sum_temp into 16 bits from 32 bits 
-assign total_sum = sum_temp; //>>> 16;
+assign total_sum = sum_pipeline_reg; //>>> 16;
 
 //define clock cycle parameters for refracoring cycles and global clock
 parameter refract_cycles=4; 
 reg signed [3:0] ref_counter; 
 
 wire is_refractor; 
-wire neuron_update_en; 
+wire neuron_update_en;
+reg neuron_update_en_reg; 
 wire tile_read_en;
 wire mult_en;
-
-assign is_refractor= (ref_counter>0);
-//combine multiplier enable and refractory protection 
-assign neuron_update_en= mult_en && !is_refractor;
-
 
 //original wires signed logic is saved on personal notion
  // output of each bw multiplier 
@@ -141,6 +138,16 @@ bw_multiplier mult3(
 
 //procedural logic////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////////
+assign is_refractor= (ref_counter>0);
+//combine multiplier enable and refractory protection 
+assign neuron_update_en= mult_en && !is_refractor;
+always @(posedge clk or posedge reset)begin 
+    if(reset)begin 
+        neuron_update_en_reg <= 1'b0; 
+    end else begin 
+        neuron_update_en_reg <= neuron_update_en;
+    end
+end
 //sum loops for input products
 always@(*) begin 
     sum_temp=
@@ -149,14 +156,15 @@ always@(*) begin
             $signed({{24{bw_products2[7]}}, bw_products2})+
             $signed({{24{bw_products3[7]}}, bw_products3});
 end
-// always@(posedge clk or posedge reset)begin 
-//     if(reset)begin
-//         sum_temp <=32'd0;
-//     end 
-//     else if(mult_en) begin 
-//         sum_temp <= sum_temp+{{24{bw_products[7]}},bw_products};
-//     end
-// end
+
+always@(posedge clk or posedge reset)begin 
+    if(reset)begin
+        sum_pipeline_reg <=32'd0;
+    end 
+    else if(mult_en) begin 
+        sum_pipeline_reg <= sum_temp;
+    end
+end
 
 //combonational pipeline for membrane pot 
 always @(*) begin 
@@ -201,14 +209,14 @@ always @(posedge clk or posedge reset) begin
         spike_out <=1'b0;
     end
     else begin //non refractoring mode
-        if (neuron_update_en)begin 
+        if (neuron_update_en_reg)begin 
             spike_out <= next_spike;
             //v_mem <= v_next;//normal mem integration
 
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
                 ref_counter <= refract_cycles; 
-                v_mem <=v_next -$signed(`THREASHOLD);    // SOFT RESET
+                v_mem <=v_next -$signed(`THREASHOLD);   // SOFT RESET
             end
 
             else if (v_next < 0)begin

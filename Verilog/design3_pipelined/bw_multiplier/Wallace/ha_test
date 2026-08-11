@@ -1,0 +1,66 @@
+#! /usr/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision - 12;
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/system.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2005_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/va_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2009.vpi";
+S_0x620eb05e6ce0 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x620eb05e6e70 .scope module, "half_adder_tb" "half_adder_tb" 3 3;
+ .timescale -9 -12;
+v0x620eb05fb190_0 .var "a", 0 0;
+v0x620eb05fb250_0 .var "b", 0 0;
+v0x620eb05fb320_0 .net "carry", 0 0, L_0x620eb05fb650;  1 drivers
+v0x620eb05fb420_0 .net "sum", 0 0, L_0x620eb05fb4f0;  1 drivers
+S_0x620eb05ad490 .scope module, "DUT" "half_adder" 3 10, 4 1 0, S_0x620eb05e6e70;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "a";
+    .port_info 1 /INPUT 1 "b";
+    .port_info 2 /OUTPUT 1 "sum";
+    .port_info 3 /OUTPUT 1 "carry";
+L_0x620eb05fb4f0 .functor XOR 1, v0x620eb05fb190_0, v0x620eb05fb250_0, C4<0>, C4<0>;
+L_0x620eb05fb650 .functor AND 1, v0x620eb05fb190_0, v0x620eb05fb250_0, C4<1>, C4<1>;
+v0x620eb05ad6e0_0 .net "a", 0 0, v0x620eb05fb190_0;  1 drivers
+v0x620eb05faef0_0 .net "b", 0 0, v0x620eb05fb250_0;  1 drivers
+v0x620eb05fafb0_0 .net "carry", 0 0, L_0x620eb05fb650;  alias, 1 drivers
+v0x620eb05fb050_0 .net "sum", 0 0, L_0x620eb05fb4f0;  alias, 1 drivers
+    .scope S_0x620eb05e6e70;
+T_0 ;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x620eb05fb190_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x620eb05fb250_0, 0, 1;
+    %delay 10000, 0;
+    %vpi_call/w 3 21 "$display", "a=%b b=%b sum=%b carry=%b", v0x620eb05fb190_0, v0x620eb05fb250_0, v0x620eb05fb420_0, v0x620eb05fb320_0 {0 0 0};
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x620eb05fb190_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x620eb05fb250_0, 0, 1;
+    %delay 10000, 0;
+    %vpi_call/w 3 26 "$display", "a=%b b=%b sum=%b carry=%b", v0x620eb05fb190_0, v0x620eb05fb250_0, v0x620eb05fb420_0, v0x620eb05fb320_0 {0 0 0};
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x620eb05fb190_0, 0, 1;
+    %pushi/vec4 0, 0, 1;
+    %store/vec4 v0x620eb05fb250_0, 0, 1;
+    %delay 10000, 0;
+    %vpi_call/w 3 31 "$display", "a=%b b=%b sum=%b carry=%b", v0x620eb05fb190_0, v0x620eb05fb250_0, v0x620eb05fb420_0, v0x620eb05fb320_0 {0 0 0};
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x620eb05fb190_0, 0, 1;
+    %pushi/vec4 1, 0, 1;
+    %store/vec4 v0x620eb05fb250_0, 0, 1;
+    %delay 10000, 0;
+    %vpi_call/w 3 36 "$display", "a=%b b=%b sum=%b carry=%b", v0x620eb05fb190_0, v0x620eb05fb250_0, v0x620eb05fb420_0, v0x620eb05fb320_0 {0 0 0};
+    %vpi_call/w 3 38 "$finish" {0 0 0};
+    %end;
+    .thread T_0;
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "-";
+    "half_adder_tb.v";
+    "half_adder.v";
