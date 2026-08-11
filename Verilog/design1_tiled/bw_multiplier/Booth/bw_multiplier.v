@@ -23,8 +23,8 @@ module bw_multiplier(
     //assign shifted_partial1= partial1>>2; 
 
     //wallace tree outputs
-    wire signed [7:0] w_sum; 
-    wire [8:0] w_carry;
+    // wire signed [7:0] w_sum; 
+    // wire [8:0] w_carry;
 
     //radix 4 booth grouping (4 bits)
     bw_gen gen(
@@ -72,14 +72,14 @@ module bw_multiplier(
     //     .sum(w_sum),
     //     .carry(w_carry)
     // );
-    assign w_sum= partial0+partial1;
-    assign w_carry = 9'b0;
+    assign product= partial0+partial1;
+    //assign w_carry = 9'b0;
 
     //carry propagate adder (CPA)
-    CPA CPA_unit(
-        .sum(w_sum),
-        .carry(w_carry),
-        .product(product)
-    );
+    // CPA CPA_unit(
+    //     .sum(w_sum),
+    //     .carry(w_carry),
+    //     .product(product)
+    // );
 
 endmodule
