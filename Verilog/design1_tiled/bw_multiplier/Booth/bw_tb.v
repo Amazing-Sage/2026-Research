@@ -57,8 +57,8 @@ module bw_tb;
                     $display("op1: %03b",DUT.op1);
                     $display("partial0: %03b",DUT.partial0);
                     $display("partial1: %03b",DUT.partial1);
-                    $display("w_sum: %03b",DUT.w_sum);
-                    $display("w_carry: %03b",DUT.w_carry);
+                    // $display("w_sum: %03b",DUT.w_sum);
+                    // $display("w_carry: %03b",DUT.w_carry);
                     $display("product: %03b",DUT. product);
                     $display("------------------------------------------------");
                 end
