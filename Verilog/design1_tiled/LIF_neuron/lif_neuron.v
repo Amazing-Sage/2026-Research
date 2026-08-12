@@ -84,7 +84,7 @@ wire signed [7:0] bw_products ; // output of each bw multiplier
 //ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [7:0] leak = v_mem >>> `LEAK_SHIFT; 
 
-assign  tile_read_en = (x_in !=0); //only read memory if there's a incoming spike
+assign  tile_read_en = (x_in[3:0] !=4'b0000); //only read memory if there's a incoming spike
 assign  mult_en = tile_read_en && (w_in !=0);//active high when valid spike input used for zero skipping
 //help quantizise into 4 bits and clamp interal 32 bit to 4 bit signed output 
 //? checks conition if true consition before : is chosed if not then after 
