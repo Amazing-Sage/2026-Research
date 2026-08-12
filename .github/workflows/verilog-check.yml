@@ -1,0 +1,30 @@
+name: Verilog Check
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  verilog-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Icarus Verilog
+        run: sudo apt-get update && sudo apt-get install -y iverilog
+
+      - name: Compile LIF neuron
+        run: |
+          cd Verilog/design1_tiled/LIF_neuron
+          iverilog -g2012 \
+            -o lif_neuron_test \
+            lif_neuron.v \
+            weight_buff.v \
+            bw_multiplier.v \
+            bw_encoder.v \
+            bw_gen.v \
+            bw_partial_product.v \
+            CPA.v
