@@ -61,6 +61,7 @@ reg signed [7:0] v_after_reset;
 reg next_spike;
 reg signed [7:0] v_next;
 reg signed [7:0] sum_temp;
+//reg signed [7:0] sum_pipeline_reg;
 wire signed [7:0] total_sum; //signed keeps negitive numbers out
 //scale sum_temp into 16 bits from 32 bits 
 assign total_sum = sum_temp; //>>> 16;
@@ -68,6 +69,7 @@ assign total_sum = sum_temp; //>>> 16;
 //define clock cycle parameters for refracoring cycles and global clock
 parameter refract_cycles=4; 
 reg signed [3:0] ref_counter; 
+//reg neuron_update_en_reg;
 
 wire is_refractor; 
 wire neuron_update_en; 
@@ -84,7 +86,7 @@ wire signed [7:0] bw_products ; // output of each bw multiplier
 //ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [7:0] leak = v_mem >>> `LEAK_SHIFT; 
 
-assign  tile_read_en = (x_in !=0); //only read memory if there's a incoming spike
+assign  tile_read_en = (x_in[3:0] !=4'b0000); //only read memory if there's a incoming spike
 assign  mult_en = tile_read_en && (w_in !=0);//active high when valid spike input used for zero skipping
 //help quantizise into 4 bits and clamp interal 32 bit to 4 bit signed output 
 //? checks conition if true consition before : is chosed if not then after 
@@ -134,7 +136,7 @@ always @(*) begin
         //after that then leak +integrate
         v_next= $signed(v_after_reset) - ($signed(v_after_reset) >>> `LEAK_SHIFT) + $signed(total_sum);
 
-        v_next_calc= v_next; 
+       // v_next_calc= v_next; 
 
     end else begin 
         next_spike= 1'b0;
@@ -142,25 +144,26 @@ always @(*) begin
         v_after_reset=v_mem; 
         v_next= $signed(v_mem) - ($signed(v_mem) >>> `LEAK_SHIFT) + $signed(total_sum);
 
-        v_next_calc= v_next; 
-
+        //v_next_calc= v_next; 
     end
-    // v_after_reset=v_mem [15:0];
-    // v_next=v_next_calc;
 
-    //calculate pot after reset 
-    // if (next_spike)begin 
-        // v_after_reset=(v_mem -$signed(`THREASHOLD));
+    // if(next_spike)begin 
+    //     ref_counter <=refract_cycles;
+    //     v_mem <= v_next;
     // end
-    // else begin 
-    //     v_after_reset= v_mem;
-    // end
-    //compute next membrane pot 
-    //v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
+   end
 
-    // $display("debug v_after_reset=%d total_sum= %d v_next=%d next_spike=%b",v_after_reset,total_sum,v_next,next_spike);
-
-end
+// //single stage pipeline registers after synapse neurons
+// always@(posedge clk or posedge reset)begin 
+//     if(reset)begin 
+//         sum_pipeline_reg <=8'd0;
+//         neuron_update_en_reg<=1'b0; 
+//     end
+//     else begin 
+//         sum_pipeline_reg <= sum_temp; 
+//         neuron_update_en_reg <= neuron_update_en;
+//     end
+// end
 
 always @(posedge clk or posedge reset) begin 
     // $display("clk=%0t x_in=%0d mult_en=%b refractory=%b update=%b total_sum=%0d v_mem=%0d"
@@ -185,7 +188,7 @@ always @(posedge clk or posedge reset) begin
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
                 ref_counter <= refract_cycles; 
-                v_mem <=v_next -$signed(`THREASHOLD);    // SOFT RESET
+                v_mem <=v_next;    // SOFT RESET
             end
 
             else if (v_next < 0)begin
