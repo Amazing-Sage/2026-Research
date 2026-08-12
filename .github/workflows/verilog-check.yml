@@ -18,13 +18,13 @@ jobs:
 
       - name: Compile LIF neuron
         run: |
-          cd Verilog/design1_tiled/LIF_neuron
           iverilog -g2012 \
+            -I Verilog/design1_tiled/LIF_neuron \
             -o lif_neuron_test \
-            lif_neuron.v \
-            weight_buff.v \
-            bw_multiplier.v \
-            bw_encoder.v \
-            bw_gen.v \
-            bw_partial_product.v \
-            CPA.v
+            Verilog/design1_tiled/LIF_neuron/lif_neuron.v \
+            Verilog/design1_tiled/Memory_till/weight_buff.v \
+            Verilog/design1_tiled/bw_multiplier/Booth/bw_multiplier.v \
+            Verilog/design1_tiled/bw_multiplier/Booth/bw_encoder.v \
+            Verilog/design1_tiled/bw_multiplier/Booth/bw_gen.v \
+            Verilog/design1_tiled/bw_multiplier/Booth/bw_partial_product.v \
+            Verilog/design1_tiled/bw_multiplier/Wallace/CPA.v
