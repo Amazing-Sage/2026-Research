@@ -61,13 +61,15 @@ reg signed [7:0] v_after_reset;
 reg next_spike;
 reg signed [7:0] v_next;
 reg signed [7:0] sum_temp;
+reg signed [7:0] sum_pipeline_reg;
 wire signed [7:0] total_sum; //signed keeps negitive numbers out
 //scale sum_temp into 16 bits from 32 bits 
-assign total_sum = sum_temp; //>>> 16;
+assign total_sum = sum_pipeline_reg; //>>> 16;
 
 //define clock cycle parameters for refracoring cycles and global clock
 parameter refract_cycles=4; 
 reg signed [3:0] ref_counter; 
+reg neuron_update_en_reg;
 
 wire is_refractor; 
 wire neuron_update_en; 
@@ -159,7 +161,18 @@ always @(*) begin
     //v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
 
     // $display("debug v_after_reset=%d total_sum= %d v_next=%d next_spike=%b",v_after_reset,total_sum,v_next,next_spike);
+end
 
+//single stage pipeline registers after synapse neurons
+always@(posedge clk or posedge reset)begin 
+    if(reset)begin 
+        sum_pipeline_reg <=8'd0;
+        neuron_update_en_reg<=1'b0; 
+    end
+    else begin 
+        sum_pipeline_reg <= sum_temp; 
+        neuron_update_en_reg <= neuron_update_en;
+    end
 end
 
 always @(posedge clk or posedge reset) begin 
@@ -178,7 +191,7 @@ always @(posedge clk or posedge reset) begin
         spike_out <=1'b0;
     end
     else begin //non refractoring mode
-        if (neuron_update_en)begin 
+        if (neuron_update_en_reg)begin 
             spike_out <= next_spike;
             //v_mem <= v_next;//normal mem integration
 
