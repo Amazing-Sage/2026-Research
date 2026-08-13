@@ -1,0 +1,56 @@
+#! /usr/bin/vvp
+:ivl_version "12.0 (stable)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision - 12;
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/system.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_sys.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/vhdl_textio.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2005_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/va_math.vpi";
+:vpi_module "/usr/lib/x86_64-linux-gnu/ivl/v2009.vpi";
+S_0x5b3591d23ed0 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x5b3591d24060 .scope module, "CPA_tb" "CPA_tb" 3 2;
+ .timescale -9 -12;
+v0x5b3591d367f0_0 .var/s "carry", 8 0;
+v0x5b3591d368b0_0 .net/s "product", 7 0, L_0x5b3591d36f70;  1 drivers
+v0x5b3591d36980_0 .var/s "sum", 7 0;
+S_0x5b3591cea490 .scope module, "DUT" "CPA" 3 8, 4 1 0, S_0x5b3591d24060;
+ .timescale 0 0;
+    .port_info 0 /INPUT 8 "sum";
+    .port_info 1 /INPUT 9 "carry";
+    .port_info 2 /OUTPUT 8 "product";
+v0x5b3591d24cb0_0 .net/s *"_ivl_0", 8 0, L_0x5b3591d36a80;  1 drivers
+v0x5b3591d36120_0 .net *"_ivl_2", 8 0, L_0x5b3591d36c90;  1 drivers
+v0x5b3591d36200_0 .net *"_ivl_4", 7 0, L_0x5b3591d36ba0;  1 drivers
+L_0x72f91b4ce018 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x5b3591d362c0_0 .net *"_ivl_6", 0 0, L_0x72f91b4ce018;  1 drivers
+v0x5b3591d363a0_0 .net/s *"_ivl_8", 8 0, L_0x5b3591d36e00;  1 drivers
+v0x5b3591d364d0_0 .net/s "carry", 8 0, v0x5b3591d367f0_0;  1 drivers
+v0x5b3591d365b0_0 .net/s "product", 7 0, L_0x5b3591d36f70;  alias, 1 drivers
+v0x5b3591d36690_0 .net/s "sum", 7 0, v0x5b3591d36980_0;  1 drivers
+L_0x5b3591d36a80 .extend/s 9, v0x5b3591d36980_0;
+L_0x5b3591d36ba0 .part v0x5b3591d367f0_0, 0, 8;
+L_0x5b3591d36c90 .concat [ 1 8 0 0], L_0x72f91b4ce018, L_0x5b3591d36ba0;
+L_0x5b3591d36e00 .arith/sum 9, L_0x5b3591d36a80, L_0x5b3591d36c90;
+L_0x5b3591d36f70 .part L_0x5b3591d36e00, 0, 8;
+    .scope S_0x5b3591d24060;
+T_0 ;
+    %pushi/vec4 0, 0, 8;
+    %store/vec4 v0x5b3591d36980_0, 0, 8;
+    %pushi/vec4 4, 0, 9;
+    %store/vec4 v0x5b3591d367f0_0, 0, 9;
+    %delay 10000, 0;
+    %vpi_call/w 3 20 "$display", "sum=%b", v0x5b3591d36980_0 {0 0 0};
+    %vpi_call/w 3 21 "$display", "carry=%b", v0x5b3591d367f0_0 {0 0 0};
+    %vpi_call/w 3 22 "$display", "product=%b", v0x5b3591d368b0_0 {0 0 0};
+    %vpi_call/w 3 24 "$finish" {0 0 0};
+    %end;
+    .thread T_0;
+# The file index is used to find the file name in the following table.
+:file_names 5;
+    "N/A";
+    "<interactive>";
+    "-";
+    "CPA_tb.v";
+    "CPA.v";

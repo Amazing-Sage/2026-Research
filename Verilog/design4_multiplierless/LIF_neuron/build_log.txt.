@@ -1,0 +1,39 @@
+rm -f results.xml
+"make" -f Makefile results.xml
+make[1]: Entering directory '/stash/tlab/2026-Research/Verilog/LIF_neuron'
+mkdir -p sim_build
+/usr/bin/iverilog -o sim_build/sim.vvp -s lif_neuron -g2012 -g2012 -I/stash/tlab/2026-Research/Verilog/LIF_neuron -I/u/bakervir/ -I/stash/tlab/2026-Research/Verilog/LIF_neuron/.. -f sim_build/cmds.f -s cocotb_iverilog_dump  /stash/tlab/2026-Research/Verilog/LIF_neuron/lif_neuron.v /stash/tlab/2026-Research/Verilog/LIF_neuron/../Memory_till/weight_buff.v /stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v sim_build/cocotb_iverilog_dump.v
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:30: error: Unknown module type: bw_gen
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:37: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:44: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:52: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:60: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:79: error: Unknown module type: CPA
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:30: error: Unknown module type: bw_gen
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:37: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:44: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:52: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:60: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:79: error: Unknown module type: CPA
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:30: error: Unknown module type: bw_gen
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:37: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:44: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:52: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:60: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:79: error: Unknown module type: CPA
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:30: error: Unknown module type: bw_gen
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:37: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:44: error: Unknown module type: bw_encoder
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:52: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:60: error: Unknown module type: bw_partial_product
+/stash/tlab/2026-Research/Verilog/LIF_neuron/../bw_multiplier/Booth/bw_multiplier.v:79: error: Unknown module type: CPA
+24 error(s) during elaboration.
+*** These modules were missing:
+        CPA referenced 4 times.
+        bw_encoder referenced 8 times.
+        bw_gen referenced 4 times.
+        bw_partial_product referenced 8 times.
+***
+make[1]: *** [/u/bakervir/snn_env/lib/python3.12/site-packages/cocotb_tools/makefiles/simulators/Makefile.icarus:52: sim_build/sim.vvp] Error 24
+make[1]: Leaving directory '/stash/tlab/2026-Research/Verilog/LIF_neuron'
+make: *** [/u/bakervir/snn_env/lib/python3.12/site-packages/cocotb_tools/makefiles/Makefile.inc:17: sim] Error 2
