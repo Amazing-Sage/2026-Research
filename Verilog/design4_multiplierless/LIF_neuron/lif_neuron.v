@@ -84,7 +84,7 @@ wire signed [7:0] bw_products ; // output of each bw multiplier
 //ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [7:0] leak = v_mem >>> `LEAK_SHIFT; 
 
-assign  tile_read_en = (x_in !=0); //only read memory if there's a incoming spike
+assign  tile_read_en = x_in[0]; //only read memory if there's a incoming spike
 assign  mult_en = tile_read_en && (w_in !=0);//active high when valid spike input used for zero skipping
 //help quantizise into 4 bits and clamp interal 32 bit to 4 bit signed output 
 //? checks conition if true consition before : is chosed if not then after 
@@ -93,15 +93,14 @@ assign v_mem_bit = ($signed(v_mem) >8'd7) ? 4'd7://upper clamp
                 v_mem[3:0]; //sliced 4 bit value
 
 
-bw_multiplier mult(
-            .enable(mult_en),
-            .A(x_in[3:0]),
-            .B(w_in),
-            .product(bw_products)
-    );
+// bw_multiplier mult(
+//             .enable(mult_en),
+//             .A(x_in[3:0]),
+//             .B(w_in),
+//             .product(bw_products)
+//     );
 
-//assign products= {{24{bw_products[7]}},bw_products};//x_in[(16*i)+:16]*w_in[(16*i)+:16];
-
+assign bw_products= x_in[0]? {{4{w_in[3]}},w_in} :8'd0;
 
 
 //procedural logic////////////////////////////////////////////////////////////////////////////////
@@ -129,10 +128,10 @@ always @(*) begin
         next_spike= 1'b1;
 
         //reset first 
-        v_after_reset=$signed(v_mem) -$signed(`THREASHOLD);
+        v_after_reset=$signed(v_mem) + $signed(total_sum) -$signed(`THREASHOLD);
 
         //after that then leak +integrate
-        v_next= $signed(v_after_reset) - ($signed(v_after_reset) >>> `LEAK_SHIFT) + $signed(total_sum);
+        v_next= $signed(v_after_reset) - ($signed(v_after_reset) >>> `LEAK_SHIFT);// + $signed(total_sum);
 
         v_next_calc= v_next; 
 
@@ -158,7 +157,7 @@ always @(*) begin
     //compute next membrane pot 
     //v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
 
-    // $display("debug v_after_reset=%d total_sum= %d v_next=%d next_spike=%b",v_after_reset,total_sum,v_next,next_spike);
+    $display("v_mem=%d total_sum=%d v_next=%d next_spike=%b",$signed(v_mem),$signed(total_sum),$signed(`THREASHOLD),$signed(v_after_reset),$signed(v_next), next_spike);
 
 end
 
@@ -171,6 +170,7 @@ always @(posedge clk or posedge reset) begin
         spike_out <= 1'b0;
         ref_counter <=4'd0;
     end 
+    //mux
     else if(ref_counter > 0)begin //refractory clamping
         ref_counter <= ref_counter-1'b1;
         //clamp v_mem
@@ -185,7 +185,7 @@ always @(posedge clk or posedge reset) begin
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
                 ref_counter <= refract_cycles; 
-                v_mem <=v_next -$signed(`THREASHOLD);    // SOFT RESET
+                v_mem <=v_next; //-$signed(`THREASHOLD);    // SOFT RESET
             end
 
             else if (v_next < 0)begin

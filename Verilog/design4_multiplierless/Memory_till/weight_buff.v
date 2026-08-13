@@ -17,7 +17,7 @@ module weight_buffer #(
     output reg signed [3:0] w_out_data //[(4*num_inputs)-1:0]
 );
 //memory array 4 bit signed weight
-reg signed [3:0] memory [0:15];
+reg signed [3:0] memory [0:num_inputs-1];
 
 //writing and reading 
 integer k;
