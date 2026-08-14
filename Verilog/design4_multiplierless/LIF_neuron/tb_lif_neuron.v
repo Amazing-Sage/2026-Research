@@ -10,7 +10,7 @@ module tb_lif_neuron;
     reg reset;
     reg [63:0] x_in;
     reg [63:0] w_out;
-    wire signed [31:0] v_mem; 
+    wire signed [7:0] v_mem; 
     wire spike_out; 
     reg mult_en;
     reg refract_cycles;
@@ -47,10 +47,19 @@ module tb_lif_neuron;
         .read_addr(read_addr)
         //.w_out_data(w_out_data) 
     );
+
     assign w_in ={60'b0, w_out_data};
 
     //simulation logic 
     always #10 clk = ~clk;
+
+    always @(posedge clk)begin 
+        if(!reset)begin
+            $display("MONITOR time=%0t v_mem=%0d spike=%0d ref_counter=%0d",
+                    $time, v_mem, spike_out, dut.ref_counter);
+        end
+    end
+
 
     initial begin 
         clk =0;
@@ -105,6 +114,14 @@ module tb_lif_neuron;
         $display("7th value read from v_mem = %d spike=%b", v_mem,spike_out);
         @(posedge clk);
         $display("8th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("9th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("10th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("11th value read from v_mem = %d spike=%b", v_mem,spike_out);
+        @(posedge clk);
+        $display("12th value read from v_mem = %d spike=%b", v_mem,spike_out);
 
 
 
