@@ -55,8 +55,9 @@ module tb_lif_neuron;
 
     always @(posedge clk)begin 
         if(!reset)begin
-            $display("MONITOR time=%0t v_mem=%0d spike=%0d ref_counter=%0d",
-                    $time, v_mem, spike_out, dut.ref_counter);
+            $display("MONITOR time=%0t |n0: v_mem=%0d spike=%b ref=%0d |n1: v_mem=%0d spike=%b ref=%0d | sel=%b pipe=%b",
+                    $time, v_mem, spike_out, dut.ref_counter,dut.v_mem_1, dut.spike_out_1, dut.ref_counter_1,
+                    dut.neuron_sel, dut.neuron_sel_pipe);
         end
     end
 
