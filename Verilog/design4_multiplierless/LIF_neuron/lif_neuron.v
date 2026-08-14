@@ -28,17 +28,8 @@ wire signed [3:0] w_out_data; //[0:num_inputs-1];
 wire signed  [3:0] w_in; //
 //sign-extend each 4-bit weight lane from the weight buffer into its 16-bit slot
 //(was hardcoded to {num_inputs{4'b0010}}, which ignored the weight buffer entirely)
-
 assign w_in=w_out_data;
-
 reg signed [7:0] v_next_calc;
-
-// generate
-//     genvar j;
-//     for (j=0; j<num_inputs; j=j+1) begin : weight_expand
-//         assign w_in[(16*j)+:16] = {{12{w_out_data[(4*j)+3]}}, w_out_data[(4*j)+:4]};
-//     end
-// endgenerate
 
 //intantiation of weight buffers for memory tilling 
 weight_buffer #(
@@ -74,6 +65,11 @@ wire neuron_update_en;
 wire tile_read_en;
 wire mult_en;
 
+//assign regesters for breaking up crit path
+reg signed [7:0] total_sum_pipe; 
+reg mult_en_pipe;
+
+
 assign is_refractor= (ref_counter>0);
 //combine multiplier enable and refractory protection 
 assign neuron_update_en= mult_en && !is_refractor;
@@ -84,7 +80,7 @@ wire signed [7:0] bw_products ; // output of each bw multiplier
 //ire signed [7:0] products [0:num_inputs-1]; //expanded products that go into neuron summation 
 wire signed [7:0] leak = v_mem >>> `LEAK_SHIFT; 
 
-assign  tile_read_en = x_in[0]; //only read memory if there's a incoming spike
+assign  tile_read_en = (x_in[0]); //only read memory if there's a incoming spike
 assign  mult_en = tile_read_en && (w_in !=0);//active high when valid spike input used for zero skipping
 //help quantizise into 4 bits and clamp interal 32 bit to 4 bit signed output 
 //? checks conition if true consition before : is chosed if not then after 
@@ -101,6 +97,7 @@ assign v_mem_bit = ($signed(v_mem) >8'd7) ? 4'd7://upper clamp
 //     );
 
 assign bw_products= x_in[0]? {{4{w_in[3]}},w_in} :8'd0;
+//assign bw_products= mult_en? {{4{w_in[3]}},w_in} :8'd0;
 
 
 //procedural logic////////////////////////////////////////////////////////////////////////////////
@@ -170,21 +167,21 @@ always @(posedge clk or posedge reset) begin
         spike_out <= 1'b0;
         ref_counter <=4'd0;
     end 
-    //mux
     else if(ref_counter > 0)begin //refractory clamping
-        ref_counter <= ref_counter-1'b1;
+        ref_counter <= {1'b0,ref_counter[3:1]};
         //clamp v_mem
         v_mem <=8'b0;//hold clamped during cool down
         spike_out <=1'b0;
     end
     else begin //non refractoring mode
+        
         if (neuron_update_en)begin 
             spike_out <= next_spike;
             //v_mem <= v_next;//normal mem integration
 
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
-                ref_counter <= refract_cycles; 
+                ref_counter <= 4'b1111; //refract_cycles; 
                 v_mem <=v_next; //-$signed(`THREASHOLD);    // SOFT RESET
             end
 
