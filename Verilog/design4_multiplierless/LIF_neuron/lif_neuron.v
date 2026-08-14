@@ -72,7 +72,7 @@ reg mult_en_pipe;
 
 assign is_refractor= (ref_counter>0);
 //combine multiplier enable and refractory protection 
-assign neuron_update_en= mult_en && !is_refractor;
+assign neuron_update_en= mult_en_pipe && !is_refractor;
 
 
 //original wires signed logic is saved on personal notion
@@ -116,16 +116,27 @@ end
 //     end
 // end
 
+// register to break crit path 
+always @(posedge clk or posedge reset)begin 
+    if(reset)begin
+        total_sum_pipe <=8'd0;
+        mult_en_pipe <=1'b0; 
+    end 
+    else begin
+        total_sum_pipe <=total_sum;
+        mult_en_pipe <=mult_en;
+    end
+end
 //combonational pipeline for membrane pot 
 always @(*) begin 
     //v_next_calc =$signed(v_mem) - $signed(leak) +$signed(total_sum);
 
     //determine spike condition 
-    if(($signed(v_mem)+ $signed(total_sum)) > $signed(`THREASHOLD))begin
+    if(($signed(v_mem)+ $signed(total_sum_pipe)) > $signed(`THREASHOLD))begin
         next_spike= 1'b1;
 
         //reset first 
-        v_after_reset=$signed(v_mem) + $signed(total_sum) -$signed(`THREASHOLD);
+        v_after_reset=$signed(v_mem) + $signed(total_sum_pipe) -$signed(`THREASHOLD);
 
         //after that then leak +integrate
         v_next= $signed(v_after_reset) - ($signed(v_after_reset) >>> `LEAK_SHIFT);// + $signed(total_sum);
@@ -136,26 +147,14 @@ always @(*) begin
         next_spike= 1'b0;
 
         v_after_reset=v_mem; 
-        v_next= $signed(v_mem) - ($signed(v_mem) >>> `LEAK_SHIFT) + $signed(total_sum);
+        v_next= $signed(v_mem) - ($signed(v_mem) >>> `LEAK_SHIFT) + $signed(total_sum_pipe);
 
         v_next_calc= v_next; 
 
     end
-    // v_after_reset=v_mem [15:0];
-    // v_next=v_next_calc;
+    
 
-    //calculate pot after reset 
-    // if (next_spike)begin 
-        // v_after_reset=(v_mem -$signed(`THREASHOLD));
-    // end
-    // else begin 
-    //     v_after_reset= v_mem;
-    // end
-    //compute next membrane pot 
-    //v_next =v_after_reset -(v_after_reset >>> `LEAK_SHIFT)+ $signed({8'b0, total_sum}); 
-
-    $display("v_mem=%d total_sum=%d v_next=%d next_spike=%b",$signed(v_mem),$signed(total_sum),$signed(`THREASHOLD),$signed(v_after_reset),$signed(v_next), next_spike);
-
+    $display("v_mem=%d total_sum=%d v_next=%d next_spike=%b",$signed(v_mem),$signed(total_sum_pipe),$signed(`THREASHOLD),$signed(v_after_reset),$signed(v_next), next_spike);
 end
 
 always @(posedge clk or posedge reset) begin 
@@ -168,7 +167,7 @@ always @(posedge clk or posedge reset) begin
         ref_counter <=4'd0;
     end 
     else if(ref_counter > 0)begin //refractory clamping
-        ref_counter <= {1'b0,ref_counter[3:1]};
+        ref_counter <= ref_counter-1'b1;
         //clamp v_mem
         v_mem <=8'b0;//hold clamped during cool down
         spike_out <=1'b0;
@@ -181,18 +180,16 @@ always @(posedge clk or posedge reset) begin
 
             if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
             // spike_out<= 1'b1;
-                ref_counter <= 4'b1111; //refract_cycles; 
+                ref_counter <= refract_cycles; 
                 v_mem <=v_next; //-$signed(`THREASHOLD);    // SOFT RESET
             end
 
             else if (v_next < 0)begin
                 v_mem <=8'd0;//fix potential bottlenecks that synchronous systems tend to have while also changing out the multiplier to the new one to help 
             end 
-
             else begin 
-                //spike_out<= 1'b0;
-                v_mem <= v_next; // add input to prevent underflow
-            end 
+                v_mem <= v_next;
+            end
 
         end else begin 
             spike_out <=1'b0; //skip update on zero 
