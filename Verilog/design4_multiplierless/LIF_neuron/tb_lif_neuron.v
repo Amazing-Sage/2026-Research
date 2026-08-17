@@ -8,12 +8,16 @@ module tb_lif_neuron;
     //declare signals to connect the neurons 
     reg clk; 
     reg reset;
-    reg [63:0] x_in;
-    reg [63:0] w_out;
+    reg [15:0] x_in;
+    reg [15:0] w_out;
     wire signed [7:0] v_mem; 
     wire spike_out; 
     reg mult_en;
     reg refract_cycles;
+
+    //neuron 2 
+    wire signed [7:0] v_mem_1; 
+    wire spike_out_1; 
 
 
     //loading weights 
@@ -37,6 +41,10 @@ module tb_lif_neuron;
         //.w_out(w_out),
         .v_mem(v_mem),
         .spike_out(spike_out),
+
+        //neuron 2
+        .v_mem_1(v_mem_1),
+        .spike_out_1(spike_out_1),
         //.mult_en(mult_en),
         //.refract_cycles(refract_cycles),
 
@@ -47,20 +55,10 @@ module tb_lif_neuron;
         .read_addr(read_addr)
         //.w_out_data(w_out_data) 
     );
-
-    assign w_in ={60'b0, w_out_data};
+    assign w_in ={16'b0, w_out_data};
 
     //simulation logic 
     always #10 clk = ~clk;
-
-    always @(posedge clk)begin 
-        if(!reset)begin
-            $display("MONITOR time=%0t |n0: v_mem=%0d spike=%b ref=%0d |n1: v_mem=%0d spike=%b ref=%0d | sel=%b pipe=%b",
-                    $time, v_mem, spike_out, dut.ref_counter,dut.v_mem_1, dut.spike_out_1, dut.ref_counter_1,
-                    dut.neuron_sel, dut.neuron_sel_pipe);
-        end
-    end
-
 
     initial begin 
         clk =0;
@@ -96,35 +94,39 @@ module tb_lif_neuron;
         #10;
 
         //apply input current 
-        x_in=4'd5;
+        x_in = 16'd0;
+        x_in [3:0] =4'd5;//neuron 1
+        x_in[7:4] = 4'd2;//neuron 2
         
         //to see refractory behavior we use @(posedge clk);
         @(posedge clk);
-        $display("1st value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("2nd value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("3rd value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("4th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("5th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("6th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("7th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("8th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("9th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("10th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("11th value read from v_mem = %d spike=%b", v_mem,spike_out);
-        @(posedge clk);
-        $display("12th value read from v_mem = %d spike=%b", v_mem,spike_out);
-
-
+        #10; 
+        $display("1st value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("2nd value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("3rd value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("4th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("5th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("6th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("7th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("8th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+         @(posedge clk);
+        #10; 
+        $display("9th value read from v_mem=%d spike=%b update-en_reg=%b next_spike=%b ref=%0d v_mem1=%0d spike1=%0b ref1=%0d", v_mem,spike_out,dut.neuron_update_en_reg, dut.next_spike,dut.ref_counter, v_mem_1, spike_out_1,dut.ref_counter_1);
+        
 
         //end simulation 
         #10;

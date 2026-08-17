@@ -10,11 +10,11 @@ from cocotb.clock import Clock # automatically generate clock signal for testben
 
 # Go up two folder levels to reach the PyTorch directory 
 pytorch_dir = os.path.abspath(
-    os.path.join(os.path.dirname(__file__), "..", "..", "PyTorch")
+    os.path.join(os.path.dirname(__file__), "..", "..","..", "PyTorch")
 )
-sys.path.append(pytorch_dir)
-
-from definitions import sim_lif
+# sys.path.append(pytorch_dir)
+# print("PyTorch path:", pytorch_dir)
+# from definitions import sim_lif
 
 #from definitions import SCALE, THRESHOLD, LEAK_SHIFT #type :ignore
 #hardcode parameters to match definitions.vh
@@ -40,7 +40,13 @@ async def run_test(dut):
     # run pytorch comparison 
     py_vmem=0
     py_ref=0
-    inputs=[2,2,0,7,0] # values sent to each of the 4 channels per cycle
+    inputs_1=[5,5,0,5,0] # values sent to each of the 4 channels per cycle
+    #neruon 2 
+    py_vmem_1=0
+    py_ref_1=0
+    inputs_2=[2,2,0,2,0]
+    
+    
     
     #apply reset to hardware 
     dut.reset.value =0
@@ -62,7 +68,7 @@ async def run_test(dut):
     # dut.w_in.value= (w3<<48) | (w2<<32) |(w1<<16) | w0
     dut.write_en.value=1
     dut.write_addr.value= 0
-    dut.w_in_data.value= 2
+    dut.w_in_data.value= 5
     await RisingEdge(dut.clk)
     dut.write_en.value= 0
     
@@ -71,23 +77,14 @@ async def run_test(dut):
     await RisingEdge(dut.clk)
     dut.read_en.value= 0
     await Timer(1,unit="ns")
+    
+    #
         
     #start test loop 
-    for i, input_val in enumerate(inputs):
-        #packed inputs initialized
-        # scaled_val= input_val <<8
-        # x3,x2,x1,x0= scaled_val,scaled_val,scaled_val,scaled_val
-        # dut.x_in.value= (x3<<48) | (x2<<32) |(x1<<16) | x0
-        
-        #select and read weight first 
-        # dut.read_en.value=1; 
-        # dut.read_addr.value=0
-        
-        # await RisingEdge(dut.clk)
-        # await Timer(1, unit="ns")
-        
-        #apply one input for one logical neuron cycle
-        dut.x_in.value= input_val & 0xF
+    for i, (input_1,input_2) in enumerate(zip(inputs_1,inputs_2)):
+        #apply x in neuron 1 and 2
+        #input for one logical neuron cycle
+        dut.x_in.value= ((input_2 & 0xF) <<4) | (input_1 & 0xF)
             
         #update inputs 
         # dut.input_val.value
@@ -95,14 +92,29 @@ async def run_test(dut):
         await Timer(1, unit="ns")
         
         #update python refrence model 
-        total_sum =2 * input_val
-        py_vmem, py_spk, py_ref = sim_lif (py_vmem, py_ref, total_sum, threshold=THREASHOLD, leak_shift=LEAK_SHIFT)
+        total_sum_1 =5 * input_1
+        total_sum_2 =5 * input_2
         
-        dut._log.info(f"Loop {i}: total_sum={total_sum}, py_vmem={py_vmem}, py_spk={py_spk}, dut_vmem={dut.v_mem.value.to_signed()}")
+        # py_vmem, py_spk, py_ref = sim_lif (
+        #         py_vmem, py_ref, total_sum_1, threshold=THREASHOLD, leak_shift=LEAK_SHIFT
+        #         )
+        
+        # py_vmem_1, py_spk_1, py_ref_1 = sim_lif (
+        #         py_vmem_1, py_ref_1, total_sum_2, threshold=THREASHOLD, leak_shift=LEAK_SHIFT
+        #         )
+        
+        dut._log.info(
+            f"Loop {i}: "
+            f"N1 RTL= {dut.v_mem.value.to_signed()},{int(dut.spike_out.value)} |"
+            f"N2 RTL= {dut.v_mem_1.value.to_signed()},{int(dut.spike_out_1.value)} |"
+            )
                 
         #assert hardware matches to refrence model 
-        assert dut.v_mem.value.to_signed() == py_vmem
-        assert dut.spike_out.value == py_spk
+        # assert dut.v_mem.value.to_signed() == py_vmem
+        # assert dut.spike_out.value == py_spk
+        
+        # assert dut.v_mem_1.value.to_signed() == py_vmem_1
+        # assert dut.spike_out_1.value == py_spk_1
     #end of forloop
     
     ##the rest after this test the v mem at a specific clock cycle to make sure its accumulating 

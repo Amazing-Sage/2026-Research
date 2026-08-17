@@ -1,4 +1,5 @@
 .venv/
+.venv_stash/
 snn_env/
 *.vcd
 *.pyc
