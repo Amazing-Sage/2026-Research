@@ -85,8 +85,8 @@ assign ref_counter_sel= neuron_sel_pipe ?ref_counter_1:ref_counter;
 reg signed [7:0] total_sum_pipe; 
 reg mult_en_pipe;
 reg neuron_sel_pipe;
-reg is_refractor_pipe;
-reg neuron_sel_mem_pipe;
+// reg is_refractor_pipe;
+// reg neuron_sel_mem_pipe;
 
 assign is_refractor= (ref_counter_sel>0);
 //combine multiplier enable and refractory protection 
@@ -140,13 +140,13 @@ always @(posedge clk or posedge reset)begin
         total_sum_pipe <=8'd0;
         mult_en_pipe <=1'b0; 
         neuron_sel_pipe <= 1'b0;
-        neuron_sel_mem_pipe <=1'b0; 
+        //neuron_sel_mem_pipe <=1'b0; 
     end 
     else begin
         total_sum_pipe <=total_sum;
         mult_en_pipe <=mult_en;
         neuron_sel_pipe <= neuron_sel;
-        neuron_sel_mem_pipe <= neuron_sel;
+        //neuron_sel_mem_pipe <= neuron_sel;
         //is_refractor_pipe <= (neuron_sel ? (ref_counter_1>0) :(ref_counter>0));
     end
 end
@@ -175,7 +175,6 @@ always @(*) begin
         v_next_calc= v_next; 
 
     end
-    
     $display("v_mem=%d total_sum=%d v_next=%d next_spike=%b",$signed(v_mem),$signed(total_sum_pipe),$signed(`THREASHOLD),$signed(v_after_reset),$signed(v_next), next_spike);
 end
 
@@ -198,85 +197,66 @@ always @(posedge clk or posedge reset) begin
     end 
     
     else begin //non refractoring mode
+        //default to spiking low
         spike_out <= 1'b0;
         spike_out_1 <=1'b0;
-        if(ref_counter_sel > 0)begin //refractory clamping
-            if (neuron_sel_pipe ==1'b0)begin 
-                ref_counter <= ref_counter-1'b1;
-                //clamp v_mem
-                v_mem <=8'b0;//hold clamped during cool down
-                spike_out <=1'b0;
-            end else begin 
-                ref_counter_1 <= ref_counter_1-1'b1;
-                v_mem_1 <=8'b0;
-                spike_out_1 <= 1'b0;
+        if(neuron_sel_pipe == 1'b0)begin //refractory clamping
+            //neuron 0
+            if(ref_counter >0)begin
+                ref_counter <= ref_counter -1'b1;
+                v_mem <= 8'd0; 
+            end else if (neuron_update_en) begin
+                spike_out <= next_spike;
+
+                if(next_spike) begin
+                    ref_counter <=refract_cycles;
+                    v_mem <= v_next;
+                end
+                else if(v_next <0)begin 
+                    v_mem <= 8'd0;
+                end
+                else begin 
+                    v_mem <= v_next;
+                end
+            end
+            else begin 
+                if(v_next <0)begin
+                    v_mem <=8'd0; 
+                end 
+                else begin 
+                    v_mem <= v_next;
+                end
             end
         end
         else begin
-            if (neuron_update_en)begin 
-                
-                if(neuron_sel_pipe ==1'b0)begin
-                    spike_out <= next_spike;
-                    //v_mem <= v_next;//normal mem integration
-                end else begin
-                    spike_out_1 <=next_spike;
+            //neuron 1
+            if(ref_counter_1 >0)begin
+                ref_counter_1 <= ref_counter_1 -1'b1;
+                v_mem <= 8'd0; 
+            end else if (neuron_update_en) begin
+                spike_out_1 <= next_spike;
+
+                if(next_spike) begin
+                    ref_counter_1 <=refract_cycles;
+                    v_mem_1 <= v_next;
                 end
-
-                if (next_spike)begin //|| v_next >= $signed(`THREASHOLD)
-                // spike_out<= 1'b1;
-                    if(neuron_sel_pipe ==1'b0)begin// do logic for either neuron 1 or 2
-                    ref_counter <= refract_cycles; 
-                    v_mem <=v_next; //-$signed(`THREASHOLD);    // SOFT RESET
-
-                    end 
-                    else begin 
-                        ref_counter_1 <= refract_cycles; 
-                        v_mem_1 <=v_next;
-
-                    end
-                end
-
-                else if (v_next < 0)begin
-                    if(neuron_sel_pipe == 1'b0)begin
-                        v_mem <=8'd0;//fix potential bottlenecks
-                                    // that synchronous systems tend to have while 
-                                    //also changing out the multiplier to the new one to help 
-                    end
-                    else begin 
-                        v_mem_1 <= 8'd0; 
-                    end
-                end 
-                else begin
-                    if(neuron_sel_pipe == 1'b0) begin
-                        v_mem <= v_next;
-                    end else begin
-                        v_mem_1 <= v_next;
-                    end
-                end
-
-            end else begin 
-                if(neuron_sel_pipe ==1'b0)begin 
-                    spike_out <= 1'b0;
-                    
-                    if(v_next <0)begin
-                        v_mem <=8'd0;
-                    end else begin
-                    v_mem <=v_next;
-                    end
+                else if(v_next <0)begin 
+                    v_mem_1 <= 8'd0;
                 end
                 else begin 
-                    spike_out_1 <= 1'b0; 
-
-                    if(v_next <0)begin 
-                        v_mem_1<=8'd0;
-                    end
-                    else begin
                     v_mem_1 <= v_next;
-                    end 
-                     
+                end
+            end
+            else begin 
+                if(v_next <0)begin
+                    v_mem_1 <=8'd0; 
+                end 
+                else begin 
+                    v_mem_1 <= v_next;
                 end
             end
         end
+        
         neuron_sel <=~neuron_sel;// this is the selector toggle inn clocked logic
     end
 end
